@@ -2,48 +2,38 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Model;
 
-class User extends Authenticatable
+class User extends Model
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+     * Tên bảng dữ liệu tương ứng (tiếng Việt).
+     */
+    protected $table = 'nguoi_dung';
+
+    /**
+     * Các trường được phép gán hàng loạt.
      */
     protected $fillable = [
-        'name',
+        'ho_ten',
         'email',
-        'password',
+        'so_dien_thoai',
+        'dia_chi',
+        'mat_khau',
+        'vai_tro',
+        'trang_thai'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public function donHangs()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(Order::class, 'nguoi_dung_id');
+    }
+
+    public function gioHangs()
+    {
+        return $this->hasMany(Cart::class, 'nguoi_dung_id');
     }
 }
