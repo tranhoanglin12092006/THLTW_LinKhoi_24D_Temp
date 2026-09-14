@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('danh_muc', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('parent_id')
+            ->nullable()
+            ->constrained('danh_muc')
+            ->nullOnDelete();
             $table->string('ten');
             $table->string('duong_dan')->unique();
             $table->boolean('trang_thai')->default(true);
