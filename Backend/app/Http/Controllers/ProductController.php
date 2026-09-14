@@ -1,30 +1,31 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Http\Resources\ProductResource;
 use Illuminate\Http\Request;
-use Illuminate\Resources\Json\AnonymousResourceCollection;  
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
 {
     /**
      * Hiển thị danh sách sản phẩm.
-     * GET/api/products
+     * GET /api/products
      */
     public function index(): AnonymousResourceCollection
     {
-        $products = Product::where('trang_thai',1)
+        $products = Product::where('trang_thai', 1)
             ->with(['danhMuc', 'thuongHieu'])
             ->orderBy('id')
             ->get();
+
         return ProductResource::collection($products);
     }
 
     /**
      * Hiển thị chi tiết một sản phẩm.
-     * Get /api/products/{product}
-     * Xem chi tiet san pham
+     * GET /api/products/{id}
      */
     public function show($id)
     {
@@ -34,8 +35,10 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    // POST /api/products
-    // Thêm sản phẩm
+    /**
+     * Thêm sản phẩm.
+     * POST /api/products
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -56,9 +59,10 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    // PUT /api/products/{id}
-    // Sửa sản phẩm
-
+    /**
+     * Sửa sản phẩm.
+     * PUT /api/products/{id}
+     */
     public function update(Request $request, $id)
     {
         $product = Product::findOrFail($id);
@@ -81,9 +85,10 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-    // DELETE /api/products/{id}
-    // Xóa sản phẩm
-
+    /**
+     * Xóa sản phẩm.
+     * DELETE /api/products/{id}
+     */
     public function destroy($id)
     {
         $product = Product::findOrFail($id);
@@ -94,5 +99,4 @@ class ProductController extends Controller
             'message' => 'Xóa sản phẩm thành công'
         ]);
     }
-
 }
