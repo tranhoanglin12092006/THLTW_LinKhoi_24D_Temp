@@ -9,3 +9,12 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/{slug}', [CategoryController::class, 'show']);
+Route::get('/categories/{slug}/children', [CategoryController::class, 'children']);
+Route::get('/categories/{slug}/parent', [CategoryController::class, 'parent']);
+//dung de sua dung apiResource de tu dong tao cac route cho CRUD
+
+
+
+
+
