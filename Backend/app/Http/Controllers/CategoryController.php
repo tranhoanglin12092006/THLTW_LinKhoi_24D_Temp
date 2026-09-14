@@ -22,9 +22,9 @@ class CategoryController extends Controller
 
         return CategoryResource::collection($categories);
     }
-    public function show(Category $slug): CategoryResource
+    public function show(Category $category): CategoryResource
     {
-        return new CategoryResource($slug->load(['children' => fn($query) => $query->active()]));
+        return new CategoryResource($category->load(['children' => fn($query) => $query->active()]));
     }
     public function children(Category $category): AnonymousResourceCollection
     {

@@ -11,6 +11,12 @@ Route::get('/user', function (Request $request) {
 
 
 Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/{category:duong_dan}', [CategoryController::class, 'show']);
+Route::get('/categories/{category:duong_dan}/children', [CategoryController::class, 'children']);
+Route::get('/categories/{category:duong_dan}/parent', [CategoryController::class, 'parent']);
+
+// Route::apiResource('categories', AdminCategoryController::class);
+
 
 
 // API sản phẩm
@@ -25,3 +31,4 @@ Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 
 
+>>>>>>> 65b9e9185a7873151b5beff0195656d20ad6f016
