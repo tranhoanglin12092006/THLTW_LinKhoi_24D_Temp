@@ -31,4 +31,4 @@ Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 
 
->>>>>>> 65b9e9185a7873151b5beff0195656d20ad6f016
+
