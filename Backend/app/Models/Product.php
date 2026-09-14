@@ -29,6 +29,28 @@ class Product extends Model
         'hinh_anh',
         'trang_thai'
     ];
+    /**
+     * Cast du lieu dinh dang so tien
+     */
+    // protected $casts = [
+    //     'gia' => 'decimal:2',
+    //     'gia_khuyen_mai' => 'decimal:2',
+    // ];
+
+    /**
+     * Lấy URL đầy đủ của hình ảnh.
+     */
+
+    protected $appends = ['hinh_anh_url'];
+
+    public function getHinhAnhUrlAttribute()
+    {
+        if (!$this->hinh_anh) {
+            return asset('images/no-image.png'); // Trả về hình ảnh mặc định nếu không có hình ảnh
+        }
+
+        return asset('storage/' . $this->hinh_anh);
+    }
 
     public function danhMuc()
     {
