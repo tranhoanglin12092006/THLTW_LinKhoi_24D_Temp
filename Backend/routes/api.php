@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 
@@ -11,9 +12,18 @@ Route::get('/user', function (Request $request) {
 
 
 Route::get('/categories', [CategoryController::class, 'index']);
-Route::get('/categories/{category:duong_dan}', [CategoryController::class, 'show']);
-Route::get('/categories/{category:duong_dan}/children', [CategoryController::class, 'children']);
-Route::get('/categories/{category:duong_dan}/parent', [CategoryController::class, 'parent']);
+Route::post('/categories', [CategoryController::class, 'store']);
+Route::get('/category/{id}', [CategoryController::class, 'show']);
+Route::put('/category/{id}', [CategoryController::class, 'update']);
+Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
+Route::get('/category/{id}/children', [CategoryController::class, 'children']);
+Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
+
+Route::get('/brands', [BrandController::class, 'index']);
+Route::post('/brands', [BrandController::class, 'store']);
+Route::get('/brand/{id}', [BrandController::class, 'show']);
+Route::put('/brand/{id}', [BrandController::class, 'update']);
+Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
 
 // Route::apiResource('categories', AdminCategoryController::class);
 
@@ -25,10 +35,3 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
-
-
-
-
-
-
->>>>>>> 65b9e9185a7873151b5beff0195656d20ad6f016
