@@ -41,14 +41,8 @@ class Category extends Model
     }
 
     // Scope: loc status = 1
-    public function scopeActive(Builder $query) 
+    public function scopeActive(Builder $query)
     {
         return $query->where('trang_thai', true);
     }
-    // dùng để bảo Laravel tìm Category bằng cột duong_dan thay vì id khi bạn dùng Route Model Binding.
-    public function getRouteKeyName(): string
-    {
-        return 'duong_dan';
-    }
-
 }
