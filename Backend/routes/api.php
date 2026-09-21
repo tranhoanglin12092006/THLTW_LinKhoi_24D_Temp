@@ -9,6 +9,8 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CartItemController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderDetailController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -89,6 +91,22 @@ Route::put('/cart-items/{id}', [CartItemController::class, 'update']);
 
 // Xóa sản phẩm khỏi giỏ hàng
 Route::delete('/cart-items/{id}', [CartItemController::class, 'destroy']);
+
+// ==================== API ĐƠN HÀNG ====================
+
+Route::get('/orders', [OrderController::class, 'index']);
+Route::post('/orders', [OrderController::class, 'store']);
+Route::get('/orders/{id}', [OrderController::class, 'show']);
+Route::put('/orders/{id}', [OrderController::class, 'update']);
+Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
+
+// ==================== API CHI TIẾT ĐƠN HÀNG ====================
+
+Route::get('/order-details', [OrderDetailController::class, 'index']);
+Route::post('/order-details', [OrderDetailController::class, 'store']);
+Route::get('/order-details/{id}', [OrderDetailController::class, 'show']);
+Route::put('/order-details/{id}', [OrderDetailController::class, 'update']);
+Route::delete('/order-details/{id}', [OrderDetailController::class, 'destroy']);
 
 
 
