@@ -22,7 +22,7 @@ class CartRequest extends FormRequest
         return [
             // ID người dùng có thể để trống,
             // nếu có thì phải tồn tại trong bảng users.
-            'nguoi_dung_id' => 'nullable|exists:users,id',
+            'nguoi_dung_id' => 'nullable|exists:nguoi_dung,id',
 
             // Session ID có thể để trống và tối đa 255 ký tự.
             'session_id' => 'nullable|string|max:255',

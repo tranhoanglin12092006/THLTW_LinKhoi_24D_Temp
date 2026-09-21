@@ -7,6 +7,8 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CartItemController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -38,6 +40,41 @@ Route::post('/products', [ProductController::class, 'store']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::put('/products/{id}', [ProductController::class, 'update']);
 Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+// ==================== API GIỎ HÀNG ====================
+
+// Lấy danh sách giỏ hàng
+Route::get('/carts', [CartController::class, 'index']);
+
+// Thêm giỏ hàng
+Route::post('/carts', [CartController::class, 'store']);
+
+// Xem một giỏ hàng
+Route::get('/carts/{id}', [CartController::class, 'show']);
+
+// Sửa giỏ hàng
+Route::put('/carts/{id}', [CartController::class, 'update']);
+
+// Xóa giỏ hàng
+Route::delete('/carts/{id}', [CartController::class, 'destroy']);
+
+
+// ==================== API CHI TIẾT GIỎ HÀNG ====================
+
+// Lấy danh sách chi tiết giỏ hàng
+Route::get('/cart-items', [CartItemController::class, 'index']);
+
+// Thêm sản phẩm vào giỏ hàng
+Route::post('/cart-items', [CartItemController::class, 'store']);
+
+// Xem một chi tiết giỏ hàng
+Route::get('/cart-items/{id}', [CartItemController::class, 'show']);
+
+// Sửa số lượng sản phẩm
+Route::put('/cart-items/{id}', [CartItemController::class, 'update']);
+
+// Xóa sản phẩm khỏi giỏ hàng
+Route::delete('/cart-items/{id}', [CartItemController::class, 'destroy']);
 
 
 // ==================== API NGƯỜI DÙNG ====================

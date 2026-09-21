@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\CartItemRequest;
+use App\Http\Requests\CartRequest;
 use App\Http\Resources\CartResource;
 use App\Http\Resources\CartItemResource;
 use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+
 
 class CartController extends Controller
 {
@@ -28,14 +29,11 @@ class CartController extends Controller
     /**
      * Tạo một giỏ hàng mới.
      */
-    public function store(Request $request): JsonResponse|CartResource
+    public function store(CartRequest $request): JsonResponse|CartResource
     {
         try {
-            // Kiểm tra dữ liệu gửi lên.
-            $data = $request->validate([
-                'nguoi_dung_id' => 'nullable|exists:users,id',
-                'session_id' => 'nullable|string|max:255',
-            ]);
+            // Lấy dữ liệu đã được kiểm tra.
+            $data = $request->validated();
 
             // Tạo giỏ hàng mới.
             $cart = Cart::create($data);
@@ -65,20 +63,20 @@ class CartController extends Controller
     /**
      * Cập nhật thông tin giỏ hàng.
      */
-    public function update(Request $request, $id): JsonResponse|CartResource
+    public function update(CartRequest $request, $id): JsonResponse|CartResource
     {
         try {
             // Tìm giỏ hàng theo ID.
             $cart = Cart::findOrFail($id);
 
-            // Kiểm tra dữ liệu được gửi lên.
-            $data = $request->validate([
-                'nguoi_dung_id' => 'nullable|exists:users,id',
-                'session_id' => 'nullable|string|max:255',
-            ]);
+            // Lấy dữ liệu đã được kiểm tra trong CartRequest.
+            $data = $request->validated();
 
             // Cập nhật giỏ hàng.
             $cart->update($data);
+
+            // Lấy lại dữ liệu mới nhất.
+            $cart->refresh();
 
             return new CartResource($cart);
         } catch (\Exception $e) {
@@ -88,7 +86,6 @@ class CartController extends Controller
             ], 500);
         }
     }
-
     /**
      * Xóa một giỏ hàng.
      */
