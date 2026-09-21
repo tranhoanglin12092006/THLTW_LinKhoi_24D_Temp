@@ -10,18 +10,18 @@ class Member extends Authenticatable
     use HasApiTokens;
 
     protected $fillable = [
-        'full_name',
+        'ho_ten',
         'email',
-        'password',
-        'phone',
+        'mau_khau',
+        'so_dien_thoai',
     ];
 
     protected $hidden = [
-        'password',
+        'mau_khau',
         'reset_token',
     ];
 
     protected $casts = [
-        'status' => 'boolean',
+        'trang_thai' => 'boolean',
     ];
 }
