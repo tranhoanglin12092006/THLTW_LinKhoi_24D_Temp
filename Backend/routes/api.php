@@ -52,13 +52,32 @@ Route::post('/register', [ApiUserController::class, 'register']);
 Route::post('/login', [ApiUserController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Lấy thông tin tài khoản đang đăng nhập
     Route::get('/me', [ApiUserController::class, 'me']);
+
+    // Đăng xuất
     Route::post('/logout', [ApiUserController::class, 'logout']);
+
+    // Cập nhật thông tin cá nhân
     Route::put('/profile', [ApiUserController::class, 'updateProfile']);
+
+    // Đổi mật khẩu
     Route::post('/change-password', [ApiUserController::class, 'changePassword']);
 
+
+    // ==================================================
+    // API CHỈ DÀNH CHO ADMIN
+    // ==================================================
+
     Route::middleware('is.admin')->prefix('admin')->group(function () {
+
+        // Lấy danh sách user
+        // GET /api/admin/users
         Route::get('/users', [ApiUserController::class, 'index']);
+
+        // Khóa / mở khóa tài khoản
+        // PUT /api/admin/users/{id}/lock
         Route::put('/users/{id}/lock', [ApiUserController::class, 'toggleLock']);
     });
 });
