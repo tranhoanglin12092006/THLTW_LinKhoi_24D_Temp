@@ -7,21 +7,21 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Member extends Authenticatable
 {
-    use HasApiTokens;
+    use HasApiTokens; //cấp createtoken
 
     protected $fillable = [
         'ho_ten',
         'email',
-        'mau_khau',
+        'mat_khau',
         'so_dien_thoai',
     ];
 
-    protected $hidden = [
-        'mau_khau',
+    protected $hidden = [ // ẩn các trường khi trả về JSON
+        'mat_khau',
         'reset_token',
     ];
 
-    protected $casts = [
+    protected $casts = [ //định nghĩa các kiểu dữ liệu cho các trường trong cơ sở dữ liệu
         'trang_thai' => 'boolean',
     ];
 }
