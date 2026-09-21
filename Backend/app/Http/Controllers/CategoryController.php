@@ -10,82 +10,151 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CategoryController extends Controller
 {
-    //Get /api/categories
+    // GET /api/categories
+    // Lấy danh sách danh mục cha và các danh mục con
     public function index(Request $request): AnonymousResourceCollection
     {
+        // Lấy số danh mục muốn hiển thị trên mỗi trang.
+        // Nếu không truyền thì mặc định là 10.
+        // Không cho phép nhỏ hơn 1 và lớn hơn 100.
         $perPage = max(1, min((int) $request->input('per_page', 10), 100));
 
+        // Chỉ lấy các danh mục đang hoạt động.
+        // whereNull('parent_id') để chỉ lấy danh mục cha.
+        // with('children') để lấy thêm các danh mục con.
+        // orderBy('id') sắp xếp danh mục theo ID.
+        // paginate() chia danh sách thành nhiều trang.
         $categories = Category::active()
             ->whereNull('parent_id')
             ->with(['children' => fn($query) => $query->active()])
             ->orderBy('id')
             ->paginate($perPage);
 
+        // Chuyển dữ liệu danh mục thành dạng JSON thông qua CategoryResource.
         return CategoryResource::collection($categories);
     }
 
+    // POST /api/categories
+    // Thêm một danh mục mới
     public function store(CategoryRequest $request)
     {
-        $category = Category::create($request->validated());
+        try {
+            // Lấy dữ liệu đã được kiểm tra trong CategoryRequest.
+            $category = Category::create($request->validated());
 
-        return response()->json([
-            'message' => 'Thêm danh mục thành công.',
-            'data' => new CategoryResource($category),
-        ], 201);
+            // Trả về thông báo thêm thành công và dữ liệu danh mục vừa tạo.
+            return response()->json([
+                'message' => 'Thêm danh mục thành công.',
+                'data' => new CategoryResource($category),
+            ], 201);
+        } catch (\Exception $e) {
+            // Nếu xảy ra lỗi khi thêm thì trả về thông báo lỗi.
+            return response()->json([
+                'message' => 'Thêm danh mục thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
+    // PUT /api/categories/{id}
+    // Cập nhật thông tin một danh mục
     public function update(CategoryRequest $request, $id)
     {
-        $category = Category::findOrFail($id);
+        try {
+            // Tìm danh mục theo ID.
+            // Nếu không tìm thấy thì Laravel sẽ báo lỗi.
+            $category = Category::findOrFail($id);
 
-        $category->update($request->validated());
+            // Lấy dữ liệu đã được kiểm tra và cập nhật vào database.
+            $category->update($request->validated());
 
-        return response()->json([
-            'message' => 'Cập nhật danh mục thành công.',
-            'data' => new CategoryResource($category),
-        ], 200);
+            // Trả về thông báo cập nhật thành công và dữ liệu mới.
+            return response()->json([
+                'message' => 'Cập nhật danh mục thành công.',
+                'data' => new CategoryResource($category),
+            ], 200);
+        } catch (\Exception $e) {
+            // Nếu cập nhật bị lỗi thì trả về thông báo lỗi.
+            return response()->json([
+                'message' => 'Cập nhật danh mục thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
+    // DELETE /api/categories/{id}
+    // Xóa một danh mục
     public function destroy($id)
     {
-        $category = Category::findOrFail($id);
-        $category->delete();
+        try {
+            // Tìm danh mục cần xóa theo ID.
+            $category = Category::findOrFail($id);
 
-        return response()->json([
-            'message' => 'Xóa danh mục thành công.',
-        ], 200);
+            // Xóa danh mục khỏi database.
+            $category->delete();
+
+            // Thông báo xóa thành công.
+            return response()->json([
+                'message' => 'Xóa danh mục thành công.',
+            ], 200);
+        } catch (\Exception $e) {
+            // Nếu xóa bị lỗi thì trả về thông báo lỗi.
+            return response()->json([
+                'message' => 'Xóa danh mục thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
+    // GET /api/categories/{id}
+    // Xem thông tin chi tiết của một danh mục
     public function show($id): CategoryResource
     {
+        // Tìm danh mục theo ID.
+        // Nếu ID không tồn tại thì Laravel tự trả về lỗi 404.
         $category = Category::findOrFail($id);
 
-        return new CategoryResource(
-            $category->load([
-                'children' => fn($query) => $query->active()
-            ])
-        );
+        // Lấy thêm các danh mục con đang hoạt động.
+        $category->load([
+            'children' => fn($query) => $query->active()
+        ]);
+
+        // Trả về thông tin danh mục thông qua CategoryResource.
+        return new CategoryResource($category);
     }
 
+    // GET /api/categories/{id}/children
+    // Lấy danh sách các danh mục con của một danh mục
     public function children(Request $request, $id): AnonymousResourceCollection
     {
+        // Tìm danh mục cha theo ID.
         $category = Category::findOrFail($id);
 
+        // Lấy số danh mục con trên mỗi trang.
+        // Mặc định là 10 nếu không truyền per_page.
         $perPage = $request->input('per_page', 10);
 
+        // Lấy các danh mục con đang hoạt động
+        // và chia thành nhiều trang.
         $children = $category->children()
             ->active()
             ->paginate($perPage);
 
+        // Trả về danh sách danh mục con thông qua CategoryResource.
         return CategoryResource::collection($children);
     }
 
+    // GET /api/categories/{id}/parent
+    // Lấy danh mục cha của một danh mục
     public function parent($id): CategoryResource
     {
+        // Tìm danh mục theo ID.
         $category = Category::findOrFail($id);
 
-        $parent = $category->parent; //Đây là cách Laravel lấy dữ liệu từ relationship.
+        // Laravel tự lấy danh mục cha thông qua relationship "parent".
+        $parent = $category->parent;
 
+        // Trả về thông tin danh mục cha.
         return new CategoryResource($parent);
     }
 }

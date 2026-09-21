@@ -32,53 +32,66 @@ class ProductController extends Controller
      */
     public function show($id)
     {
-        $product = Product::with(['danhMuc', 'thuongHieu'])
-            ->findOrFail($id);
+        try {
+            $product = Product::with(['danhMuc', 'thuongHieu'])
+                ->findOrFail($id);
 
-        return new ProductResource($product);
+            return new ProductResource($product);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Không tìm thấy sản phẩm',
+                'error' => $e->getMessage()
+            ], 404);
+        }
     }
 
-    /**
-     * Thêm sản phẩm.
-     * POST /api/products
-     */
     /**
      * Thêm sản phẩm.
      * POST /api/products
      */
     public function store(ProductRequest $request)
     {
-        // Lấy dữ liệu đã được ProductRequest kiểm tra.
-        $data = $request->validated();
+        try {
+            // Lấy dữ liệu đã được ProductRequest kiểm tra.
+            $data = $request->validated();
 
-        // Tạo sản phẩm mới trong database.
-        $product = Product::create($data);
+            // Tạo sản phẩm mới trong database.
+            $product = Product::create($data);
 
-        // Trả về thông tin sản phẩm dưới dạng JSON.
-        return new ProductResource($product);
+            // Trả về thông tin sản phẩm dưới dạng JSON.
+            return new ProductResource($product);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Thêm sản phẩm thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * Sửa sản phẩm.
      * PUT /api/products/{id}
      */
-    /**
-     * Sửa sản phẩm.
-     * PUT /api/products/{id}
-     */
     public function update(ProductRequest $request, $id)
     {
-        // Tìm sản phẩm theo ID.
-        $product = Product::findOrFail($id);
+        try {
+            // Tìm sản phẩm theo ID.
+            $product = Product::findOrFail($id);
 
-        // Lấy dữ liệu đã được ProductRequest kiểm tra.
-        $data = $request->validated();
+            // Lấy dữ liệu đã được ProductRequest kiểm tra.
+            $data = $request->validated();
 
-        // Cập nhật sản phẩm.
-        $product->update($data);
+            // Cập nhật sản phẩm.
+            $product->update($data);
 
-        // Trả về sản phẩm sau khi cập nhật.
-        return new ProductResource($product);
+            // Trả về sản phẩm sau khi cập nhật.
+            return new ProductResource($product);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Cập nhật sản phẩm thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -87,12 +100,19 @@ class ProductController extends Controller
      */
     public function destroy($id)
     {
-        $product = Product::findOrFail($id);
+        try {
+            $product = Product::findOrFail($id);
 
-        $product->delete();
+            $product->delete();
 
-        return response()->json([
-            'message' => 'Xóa sản phẩm thành công'
-        ]);
+            return response()->json([
+                'message' => 'Xóa sản phẩm thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Xóa sản phẩm thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
