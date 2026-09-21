@@ -51,6 +51,11 @@ class User extends Authenticatable
         return $this->mat_khau;
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->vai_tro === 'admin';
+    }
+
     /**
      * Quan hệ với đơn hàng.
      *
