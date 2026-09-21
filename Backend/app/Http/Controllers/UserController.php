@@ -17,7 +17,9 @@ class UserController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
-        $users = User::orderBy('id')->get();
+        $perPage = request()->get('per_page', 10);
+
+        $users = User::orderBy('id')->paginate($perPage); 
 
         return UserResource::collection($users);
     }
