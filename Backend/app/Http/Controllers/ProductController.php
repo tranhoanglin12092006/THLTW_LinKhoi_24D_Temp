@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Http\Resources\ProductResource;
-use Illuminate\Http\Request;
+use App\Http\Requests\ProductRequest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
@@ -39,23 +39,19 @@ class ProductController extends Controller
      * Thêm sản phẩm.
      * POST /api/products
      */
-    public function store(Request $request)
+    /**
+     * Thêm sản phẩm.
+     * POST /api/products
+     */
+    public function store(ProductRequest $request)
     {
-        $data = $request->validate([
-            'danh_muc_id' => 'required|exists:danh_muc,id',
-            'thuong_hieu_id' => 'required|exists:thuong_hieu,id',
-            'ten' => 'required|string|max:255',
-            'duong_dan' => 'required|string|max:255|unique:san_pham,duong_dan',
-            'gia' => 'required|numeric|min:0',
-            'gia_khuyen_mai' => 'nullable|numeric|min:0',
-            'so_luong_ton' => 'required|integer|min:0',
-            'mo_ta' => 'nullable|string',
-            'hinh_anh' => 'nullable|string',
-            'trang_thai' => 'required|boolean',
-        ]);
+        // Lấy dữ liệu đã được ProductRequest kiểm tra.
+        $data = $request->validated();
 
+        // Tạo sản phẩm mới trong database.
         $product = Product::create($data);
 
+        // Trả về thông tin sản phẩm dưới dạng JSON.
         return new ProductResource($product);
     }
 
@@ -63,25 +59,22 @@ class ProductController extends Controller
      * Sửa sản phẩm.
      * PUT /api/products/{id}
      */
-    public function update(Request $request, $id)
+    /**
+     * Sửa sản phẩm.
+     * PUT /api/products/{id}
+     */
+    public function update(ProductRequest $request, $id)
     {
+        // Tìm sản phẩm theo ID.
         $product = Product::findOrFail($id);
 
-        $data = $request->validate([
-            'danh_muc_id' => 'required|exists:danh_muc,id',
-            'thuong_hieu_id' => 'required|exists:thuong_hieu,id',
-            'ten' => 'required|string|max:255',
-            'duong_dan' => 'required|string|max:255|unique:san_pham,duong_dan,' . $id,
-            'gia' => 'required|numeric|min:0',
-            'gia_khuyen_mai' => 'nullable|numeric|min:0',
-            'so_luong_ton' => 'required|integer|min:0',
-            'mo_ta' => 'nullable|string',
-            'hinh_anh' => 'nullable|string',
-            'trang_thai' => 'required|boolean',
-        ]);
+        // Lấy dữ liệu đã được ProductRequest kiểm tra.
+        $data = $request->validated();
 
+        // Cập nhật sản phẩm.
         $product->update($data);
 
+        // Trả về sản phẩm sau khi cập nhật.
         return new ProductResource($product);
     }
 
