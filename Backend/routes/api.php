@@ -13,31 +13,37 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
-Route::get('/categories', [CategoryController::class, 'index']);
-Route::post('/categories', [CategoryController::class, 'store']);
-Route::get('/category/{id}', [CategoryController::class, 'show']);
-Route::put('/category/{id}', [CategoryController::class, 'update']);
-Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::middleware('is.admin')->group(function () {
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::get('/category/{id}', [CategoryController::class, 'show']);
+        Route::put('/category/{id}', [CategoryController::class, 'update']);
+        Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
+
+        Route::get('/brands', [BrandController::class, 'index']);
+        Route::post('/brands', [BrandController::class, 'store']);
+        Route::get('/brand/{id}', [BrandController::class, 'show']);
+        Route::put('/brand/{id}', [BrandController::class, 'update']);
+        Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
+
+        // API sản phẩm
+        Route::get('/products', [ProductController::class, 'index']);
+        Route::post('/products', [ProductController::class, 'store']);
+        Route::get('/products/{id}', [ProductController::class, 'show']);
+        Route::put('/products/{id}', [ProductController::class, 'update']);
+        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+    });
+});
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
 
 
-Route::get('/brands', [BrandController::class, 'index']);
-Route::post('/brands', [BrandController::class, 'store']);
-Route::get('/brand/{id}', [BrandController::class, 'show']);
-Route::put('/brand/{id}', [BrandController::class, 'update']);
-Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
 
 // Route::apiResource('categories', AdminCategoryController::class);
 
 
-
-// API sản phẩm
-Route::get('/products', [ProductController::class, 'index']);
-Route::post('/products', [ProductController::class, 'store']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
-Route::put('/products/{id}', [ProductController::class, 'update']);
-Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
 
 // ==================== API NGƯỜI DÙNG ====================
@@ -78,6 +84,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Khóa / mở khóa tài khoản
         // PUT /api/admin/users/{id}/lock
-        Route::put('/users/{id}/lock', [ApiUserController::class, 'toggleLock']);
+        Route::put('/users/{user}/lock', [ApiUserController::class, 'toggleLock']);
     });
 });
