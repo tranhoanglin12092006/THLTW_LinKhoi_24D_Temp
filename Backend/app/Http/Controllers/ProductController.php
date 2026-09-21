@@ -15,10 +15,13 @@ class ProductController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
+        // Số sản phẩm hiển thị trên mỗi trang.
+        $perPage = request()->get('per_page', 10);
+
         $products = Product::where('trang_thai', 1)
             ->with(['danhMuc', 'thuongHieu'])
             ->orderBy('id')
-            ->get();
+            ->paginate($perPage);
 
         return ProductResource::collection($products);
     }
