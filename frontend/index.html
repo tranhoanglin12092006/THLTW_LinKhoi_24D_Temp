@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NovaTech — Siêu thị thiết bị công nghệ chính hãng, đỉnh cao công nghệ</title>
+<meta name="description" content="NovaTech - Mua sắm điện thoại, laptop, tai nghe, đồng hồ thông minh chính hãng với giá tốt nhất. Miễn phí vận chuyển cho đơn hàng từ 500.000đ.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={darkMode:'class',theme:{extend:{colors:{primary:{DEFAULT:'#2563EB',dark:'#1D4ED8',light:'#3B82F6'},accent:'#06B6D4',dark:'#0F172A',surface:'#F8FAFC',sale:'#EF4444',success:'#22C55E'},fontFamily:{sans:['Inter','sans-serif']},borderRadius:{xl2:'20px'}}}}</script>
+<link rel="stylesheet" href="css/style.css">
+<style>body{font-family:'Inter',sans-serif}</style>
+</head>
+<body data-page="index.html" class="bg-surface dark:bg-slate-950 text-slate-800 dark:text-slate-100">
+<div id="app-header"></div>
+<main>
+
+  <!-- HERO -->
+  <section class="relative overflow-hidden bg-gradient-to-b from-blue-50/70 via-slate-50 to-surface dark:from-slate-900/90 dark:via-slate-900 dark:to-slate-950 py-12 md:py-20">
+    <!-- Ambient glow decorations -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-blue-500/15 via-cyan-400/20 to-indigo-500/15 blur-3xl pointer-events-none rounded-full"></div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center relative z-10">
+      <div class="animate-fade-up">
+        <div class="inline-flex items-center gap-2 bg-blue-100/80 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-bold tracking-wide px-3.5 py-1.5 rounded-full mb-6 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+          CÔNG NGHỆ THẾ HỆ MỚI 2026
+        </div>
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.12] text-slate-900 dark:text-white mb-6 tracking-tight">
+          Khám Phá Thế Giới <br>
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500">Công Nghệ Đỉnh Cao</span>
+        </h1>
+        <p class="text-slate-600 dark:text-slate-300 text-lg mb-8 max-w-lg leading-relaxed">
+          NovaTech mang đến những thiết bị flagship chính hãng Apple, Samsung, Sony, Asus... Giá tốt nhất mỗi ngày, bảo hành 1 đổi 1 và giao nhanh 2h toàn quốc.
+        </p>
+        <div class="flex flex-wrap items-center gap-4 mb-10">
+          <a href="shop.html" class="bg-primary hover:bg-primary-dark text-white font-semibold px-8 py-4 rounded-xl transition-all duration-200 shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 flex items-center gap-2">
+            <span>Mua ngay hôm nay</span>
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+          <a href="shop.html?sale=1" class="bg-white/80 dark:bg-slate-800/80 backdrop-blur text-slate-800 dark:text-slate-200 font-semibold px-7 py-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-primary hover:text-primary transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2">
+            <span>🔥 Săn Flash Sale</span>
+          </a>
+        </div>
+        
+        <!-- Trust mini-stats -->
+        <div class="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200/80 dark:border-slate-800 text-left">
+          <div>
+            <p class="text-2xl font-black text-slate-900 dark:text-white">50K+</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Khách hàng tin chọn</p>
+          </div>
+          <div>
+            <p class="text-2xl font-black text-blue-600 dark:text-blue-400">100%</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Chính hãng cam kết</p>
+          </div>
+          <div>
+            <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400">30 Ngày</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Đổi mới 1-1 miễn phí</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Visual with Real Image & Floating Cards -->
+      <div class="relative animate-fade-up" style="animation-delay:.15s">
+        <div class="relative mx-auto max-w-md lg:max-w-none">
+          <div class="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/80 dark:border-slate-800/80 bg-slate-900 group">
+            <img src="https://images.unsplash.com/photo-1468495244123-6c6c332eeede?w=1000&auto=format&fit=crop&q=80" alt="NovaTech Gadgets" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="eager">
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+            <div class="absolute bottom-5 left-6 right-6 flex items-center justify-between text-white">
+              <div>
+                <p class="text-xs uppercase font-bold tracking-widest text-cyan-400">NovaTech Flagship 2026</p>
+                <p class="text-lg font-bold">Hệ sinh thái thiết bị thông minh</p>
+              </div>
+              <span class="bg-white/20 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/30">Chính hãng</span>
+            </div>
+          </div>
+
+          <!-- Floating Badges -->
+          <div class="absolute -left-6 top-8 bg-white/95 dark:bg-slate-800/95 shadow-xl rounded-2xl p-3 sm:px-4 sm:py-3.5 flex items-center gap-3 border border-slate-100 dark:border-slate-700 animate-fade-up backdrop-blur-md" style="animation-delay:.3s">
+            <span class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0" id="ic-truck"></span>
+            <div>
+              <p class="text-xs font-bold text-slate-800 dark:text-white leading-tight">Free Fast Shipping</p>
+              <p class="text-[11px] text-slate-400">Đơn từ 500K toàn quốc</p>
+            </div>
+          </div>
+
+          <div class="absolute -right-4 top-1/3 bg-white/95 dark:bg-slate-800/95 shadow-xl rounded-2xl p-3 sm:px-4 sm:py-3.5 flex items-center gap-3 border border-slate-100 dark:border-slate-700 animate-fade-up backdrop-blur-md" style="animation-delay:.4s">
+            <span class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0" id="ic-shield"></span>
+            <div>
+              <p class="text-xs font-bold text-slate-800 dark:text-white leading-tight">100% Chính Hãng</p>
+              <p class="text-[11px] text-slate-400">Bảo hành 12 tháng uy tín</p>
+            </div>
+          </div>
+
+          <div class="absolute left-6 -bottom-6 bg-white/95 dark:bg-slate-800/95 shadow-xl rounded-2xl p-3 sm:px-4 sm:py-3.5 flex items-center gap-3 border border-slate-100 dark:border-slate-700 animate-fade-up backdrop-blur-md" style="animation-delay:.5s">
+            <span class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0" id="ic-refresh"></span>
+            <div>
+              <p class="text-xs font-bold text-slate-800 dark:text-white leading-tight">Đổi Trả Trong 30 Ngày</p>
+              <p class="text-[11px] text-slate-400">1 đổi 1 nhanh chóng</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Mua sắm theo danh mục</h2>
+        <p class="text-slate-400 text-sm mt-1">Khám phá các dòng sản phẩm công nghệ tiên tiến nhất</p>
+      </div>
+      <a href="shop.html" class="text-primary text-sm font-semibold hover:underline hidden sm:block">Xem tất cả danh mục →</a>
+    </div>
+    <div id="home-categories" class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-5"></div>
+  </section>
+
+  <!-- NEW PRODUCTS -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">✨ Sản phẩm mới về</h2>
+        <p class="text-slate-400 text-sm mt-1">Những thiết bị công nghệ đỉnh cao vừa cập bến NovaTech</p>
+      </div>
+      <a href="shop.html?sort=new" class="text-primary text-sm font-semibold hover:underline hidden sm:block">Xem tất cả →</a>
+    </div>
+    <div id="home-new"></div>
+  </section>
+
+  <!-- FLASH SALE -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 mb-8 flex flex-wrap items-center justify-between gap-4 border border-indigo-900/50 shadow-2xl">
+      <div class="flex items-center gap-4">
+        <span class="text-4xl animate-bounce">⚡</span>
+        <div>
+          <h2 class="text-xl md:text-2xl font-black text-white tracking-tight">Flash Sale — Siêu Deal Công Nghệ</h2>
+          <p class="text-slate-300 text-sm">Số lượng có hạn, nhanh tay săn ngay mức giá hời nhất</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-slate-400 text-sm font-medium">Kết thúc sau:</span>
+        <div id="flash-timer" class="bg-sale text-white font-mono font-black text-lg px-5 py-2.5 rounded-xl tracking-widest shadow-lg shadow-sale/30">02 : 15 : 48</div>
+      </div>
+    </div>
+    <div id="home-sale" class="w-full"></div>
+  </section>
+
+  <!-- HOT PRODUCTS -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-2">🔥 Sản phẩm bán chạy nhất</h2>
+        <p class="text-slate-400 text-sm mt-1">Được đông đảo tín đồ công nghệ đánh giá cao & tin chọn</p>
+      </div>
+      <a href="shop.html?sort=bestseller" class="text-primary text-sm font-semibold hover:underline hidden sm:block">Xem tất cả →</a>
+    </div>
+    <div id="home-hot" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"></div>
+  </section>
+
+  <!-- PROMOTION BANNER -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-600 to-cyan-500 px-8 py-12 md:py-16 text-center shadow-2xl text-white">
+      <div class="relative z-10 max-w-2xl mx-auto">
+        <span class="inline-block bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-full mb-4 border border-white/30">NovaTech Mega Festival</span>
+        <h2 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">SALE BÙNG NỔ LÊN ĐẾN 50%</h2>
+        <p class="text-white/90 text-base md:text-lg mb-8 leading-relaxed">Ưu đãi công nghệ đỉnh cao dành riêng cho bạn — áp dụng cho hàng trăm sản phẩm flagship chọn lọc.</p>
+        <a href="shop.html?sale=1" class="inline-flex items-center gap-2 bg-white text-primary font-bold px-8 py-4 rounded-xl hover:bg-slate-50 transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95">
+          <span>Xem tất cả khuyến mãi</span>
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
+      <div class="bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 text-center shadow-sm">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-slate-700/60 text-primary flex items-center justify-center mb-3.5" id="feat-1"></div>
+        <h3 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Miễn phí vận chuyển</h3>
+        <p class="text-xs text-slate-400">Đơn hàng từ 500.000đ toàn quốc</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 text-center shadow-sm">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-slate-700/60 text-primary flex items-center justify-center mb-3.5" id="feat-2"></div>
+        <h3 class="font-bold text-slate-800 dark:text-white text-sm mb-1">100% Chính hãng</h3>
+        <p class="text-xs text-slate-400">Cam kết nguồn gốc xuất xứ rõ ràng</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 text-center shadow-sm">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-slate-700/60 text-primary flex items-center justify-center mb-3.5" id="feat-3"></div>
+        <h3 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Đổi trả trong 30 ngày</h3>
+        <p class="text-xs text-slate-400">Lỗi 1 đổi 1 nhanh chóng thuận tiện</p>
+      </div>
+      <div class="bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 text-center shadow-sm">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 dark:bg-slate-700/60 text-primary flex items-center justify-center mb-3.5" id="feat-4"></div>
+        <h3 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Hỗ trợ kỹ thuật 24/7</h3>
+        <p class="text-xs text-slate-400">Đội ngũ kỹ thuật viên chuyên nghiệp</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRANDS -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+    <div class="text-center mb-8">
+      <p class="text-xs font-bold uppercase tracking-widest text-slate-400">Đối tác thương hiệu hàng đầu</p>
+    </div>
+    <div class="grid grid-cols-4 md:grid-cols-8 gap-4 items-center">
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Apple</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Samsung</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Sony</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Asus</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Lenovo</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Dell</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">HP</div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl py-4 text-center text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary/40 transition-all font-bold text-sm shadow-sm">Xiaomi</div>
+    </div>
+  </section>
+
+  <!-- NEWS -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-16">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Tin tức công nghệ mới</h2>
+        <p class="text-slate-400 text-sm mt-1">Cập nhật tin tức, đánh giá sản phẩm và xu hướng số</p>
+      </div>
+      <a href="news.html" class="text-primary text-sm font-semibold hover:underline hidden sm:block">Xem tất cả bài viết →</a>
+    </div>
+    <div id="home-news" class="grid md:grid-cols-3 gap-6"></div>
+  </section>
+
+  <!-- NEWSLETTER -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+    <div class="bg-gradient-to-br from-slate-100 to-blue-50/50 dark:from-slate-900 dark:to-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 rounded-3xl p-8 md:p-14 text-center">
+      <div class="max-w-xl mx-auto">
+        <span class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4" id="nl-icon"></span>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white mb-2">Đăng ký nhận ưu đãi độc quyền</h2>
+        <p class="text-slate-500 dark:text-slate-400 mb-6 text-sm">Nhận ngay voucher giảm giá 100.000đ cho đơn hàng đầu tiên và cập nhật sớm nhất các sản phẩm mới.</p>
+        <form onsubmit="event.preventDefault(); showToast('Đăng ký nhận tin thành công!','success'); this.reset()" class="flex flex-col sm:flex-row gap-3">
+          <input required type="email" placeholder="Nhập địa chỉ email của bạn..." class="flex-1 px-5 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-primary/40 dark:text-white">
+          <button class="bg-primary hover:bg-primary-dark text-white font-semibold px-7 py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg shadow-primary/20">Đăng ký ngay</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+<div id="app-footer" class="bg-dark mt-4"></div>
+
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/product.js"></script>
+<script src="js/cart.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/news.js"></script>
+<script>
+  document.getElementById('ic-truck').innerHTML = icon('truck','w-5 h-5');
+  document.getElementById('ic-shield').innerHTML = icon('shield','w-5 h-5');
+  document.getElementById('ic-refresh').innerHTML = icon('refresh','w-5 h-5');
+  document.getElementById('feat-1').innerHTML = icon('truck','w-7 h-7');
+  document.getElementById('feat-2').innerHTML = icon('shield','w-7 h-7');
+  document.getElementById('feat-3').innerHTML = icon('refresh','w-7 h-7');
+  document.getElementById('feat-4').innerHTML = icon('headset','w-7 h-7');
+  document.getElementById('nl-icon').innerHTML = icon('mail','w-6 h-6');
+
+  document.getElementById('home-categories').innerHTML = CATEGORIES.map(c => `
+    <a href="shop.html?cat=${c.id}" class="group bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 rounded-2xl p-5 text-center hover:shadow-xl hover:-translate-y-1.5 hover:border-primary/50 transition-all duration-300 flex flex-col items-center">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700/60 dark:to-slate-700/20 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-white group-hover:scale-110 shadow-sm transition-all duration-300">
+        ${catIcon(c.icon)}
+      </div>
+      <p class="font-bold text-sm text-slate-800 dark:text-white group-hover:text-primary transition-colors">${c.name}</p>
+      <p class="text-xs text-slate-400 mt-0.5">${c.count} sản phẩm</p>
+    </a>`).join('');
+
+  document.getElementById('home-new').innerHTML = productGrid(PRODUCTS.filter(p=>p.badge==='NEW').slice(0,4));
+  document.getElementById('home-hot').innerHTML = [...PRODUCTS].sort((a,b)=>b.sold-a.sold).slice(0,4).map(p => `
+    <div>${productCardHTML(p)}
+      <div class="mt-2.5 px-1">
+        <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full" style="width:${Math.min(100,p.sold)}%"></div>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1 font-medium">🔥 Đã bán ${p.sold} · Chỉ còn ${p.stock} sản phẩm</p>
+      </div>
+    </div>`).join('');
+  document.getElementById('home-sale').innerHTML = `
+    <div class="relative grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 stagger w-full">
+      ${PRODUCTS.filter(p=>p.badge==='SALE').slice(0,4).map(p => `
+        <div class="flex flex-col">
+          ${productCardHTML(p)}
+          <div class="mt-2.5 px-1">
+            <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-rose-500 to-amber-500 rounded-full" style="width:${Math.min(100, Math.round((p.sold / (p.sold + p.stock)) * 100))}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1 font-medium">
+              <span class="text-rose-500 font-bold">⚡ Đã bán ${p.sold}</span>
+              <span>Còn ${p.stock} suất</span>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  document.getElementById('home-news').innerHTML = NEWS.slice(0,3).map(newsCardHTML).join('');
+  startCountdown('flash-timer', 2.26);
+</script>
+</body>
+</html>
