@@ -64,6 +64,8 @@ class OrderDetailController extends Controller
     }
 
     // Cập nhật số lượng
+
+    // Cập nhật số lượng
     public function update(OrderDetailRequest $request, $id): JsonResponse|OrderDetailResource
     {
         try {
@@ -73,22 +75,45 @@ class OrderDetailController extends Controller
             // Lấy dữ liệu đã kiểm tra
             $data = $request->validated();
 
-            // Chỉ cập nhật số lượng
-            $orderDetail->update([
-                'so_luong' => $data['so_luong']
-            ]);
-
-            // Lấy thêm thông tin sản phẩm
+            // Lấy thông tin sản phẩm
             $orderDetail->load('sanPham');
 
-            return new OrderDetailResource($orderDetail);
+            // Kiểm tra sản phẩm có tồn tại không
+            if (!$orderDetail->sanPham) {
+                return response()->json([
+                    'message' => 'Sản phẩm của chi tiết đơn hàng không tồn tại.'
+                ], 404);
+            }
+
+            // Lấy đơn giá hiện tại của sản phẩm
+            $donGia = $orderDetail->sanPham->gia_khuyen_mai
+                ?? $orderDetail->sanPham->gia;
+
+            // Tính lại thành tiền = đơn giá × số lượng mới
+            $thanhTien = $donGia * $data['so_luong'];
+
+            // Cập nhật số lượng và thành tiền
+            $orderDetail->update([
+                'so_luong' => $data['so_luong'],
+                'gia' => $thanhTien
+            ]);
+
+            // Lấy lại thông tin sản phẩm
+            $orderDetail->load('sanPham');
+
+            return response()->json([
+                'message' => 'Cập nhật số lượng và giá chi tiết đơn hàng thành công.',
+                'data' => new OrderDetailResource($orderDetail)
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Cập nhật số lượng thất bại.',
+                'message' => 'Cập nhật chi tiết đơn hàng thất bại.',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
+
 
     // Xóa chi tiết đơn hàng
     public function destroy($id): JsonResponse
