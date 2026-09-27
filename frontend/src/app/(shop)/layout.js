@@ -3,16 +3,10 @@ import Footer from "@/components/shop/Footer";
 
 export default function ShopLayout({ children }) {
     return (
-
-        <div className="">
-
+        <div className="min-h-screen flex flex-col">
             <Header />
-
-            <main>{children}</main>
-
+            <div className="flex-1">{children}</div>
             <Footer />
-
         </div>
-
     );
 }
