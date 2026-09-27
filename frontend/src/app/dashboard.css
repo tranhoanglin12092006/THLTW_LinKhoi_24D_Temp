@@ -1,0 +1,910 @@
+/* =========================================================
+   DASHBOARD
+   Thiết lập nền và bố cục tổng thể của trang
+========================================================= */
+
+.dashboard {
+    min-height: 100vh;
+
+    /* Nền tối kết hợp hiệu ứng tím/xanh */
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(109, 40, 217, 0.18),
+            transparent 35%
+        ),
+        #090b14;
+
+    color: #ffffff;
+
+    display: flex;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   Thanh menu bên trái
+========================================================= */
+
+.sidebar {
+    width: 230px;
+    height: 100vh;
+
+    position: fixed;
+    left: 0;
+    top: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 28px 18px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #111225 0%,
+            #0b0c17 100%
+        );
+
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+
+/* Logo */
+
+.sidebar-logo {
+    padding: 0 10px 30px;
+}
+
+.sidebar-logo h2 {
+    margin: 0;
+
+    font-size: 20px;
+    font-weight: 700;
+
+    background: linear-gradient(
+        90deg,
+        #a855f7,
+        #6366f1
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.sidebar-logo span {
+    display: block;
+
+    margin-top: 5px;
+
+    font-size: 11px;
+    color: #777b91;
+}
+
+
+/* =========================================================
+   SIDEBAR MENU
+========================================================= */
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+
+/* Tiêu đề nhóm menu */
+
+.menu-title {
+    margin: 18px 10px 8px;
+
+    font-size: 10px;
+    font-weight: 600;
+
+    color: #62667c;
+}
+
+
+/* Một item trong menu */
+
+.menu-item {
+    display: flex;
+    align-items: center;
+
+    min-height: 42px;
+
+    padding: 0 12px;
+
+    border-radius: 10px;
+
+    color: #8e92a8;
+
+    text-decoration: none;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+
+/* Khu vực icon */
+
+.menu-icon {
+    width: 24px;
+    margin-right: 8px;
+}
+
+
+/* Hiệu ứng khi rê chuột */
+
+.menu-item:hover {
+    color: #ffffff;
+
+    background: rgba(139, 92, 246, 0.1);
+}
+
+
+/* Menu đang được chọn */
+
+.menu-item.active {
+    color: #ffffff;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(124, 58, 237, 0.35),
+            rgba(79, 70, 229, 0.15)
+        );
+
+    border: 1px solid rgba(139, 92, 246, 0.18);
+}
+
+
+/* =========================================================
+   SIDEBAR FOOTER
+========================================================= */
+
+.sidebar-footer {
+    margin-top: auto;
+
+    padding: 15px 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-footer span {
+    font-size: 12px;
+    color: #85899e;
+}
+
+.sidebar-footer small {
+    font-size: 10px;
+    color: #505468;
+}
+
+
+/* =========================================================
+   DASHBOARD MAIN
+   Nội dung chính bên phải Sidebar
+========================================================= */
+
+.dashboard-main {
+    width: calc(100% - 230px);
+
+    margin-left: 230px;
+
+    padding: 30px;
+}
+
+
+/* =========================================================
+   TIÊU ĐỀ DASHBOARD
+========================================================= */
+
+.dashboard-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 28px;
+}
+
+.dashboard-title h1 {
+    margin: 0;
+
+    font-size: 28px;
+}
+
+.dashboard-title p {
+    margin: 6px 0 0;
+
+    color: #777b91;
+
+    font-size: 13px;
+}
+
+.dashboard-date {
+    padding: 9px 15px;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    border-radius: 8px;
+
+    color: #999db1;
+
+    font-size: 12px;
+
+    background: rgba(255, 255, 255, 0.025);
+}
+
+
+/* =========================================================
+   STAT CARD
+   4 ô thống kê phía trên
+========================================================= */
+
+.stat-grid {
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 18px;
+
+    margin-bottom: 20px;
+}
+
+
+.stat-card {
+    position: relative;
+
+    min-height: 125px;
+
+    padding: 20px;
+
+    display: flex;
+    justify-content: space-between;
+
+    overflow: hidden;
+
+    border-radius: 14px;
+
+    border: 1px solid rgba(255, 255, 255, 0.06);
+
+    background: rgba(20, 22, 38, 0.85);
+}
+
+
+/* Hiệu ứng sáng nhẹ phía sau card */
+
+.stat-card::after {
+    content: "";
+
+    position: absolute;
+
+    width: 100px;
+    height: 100px;
+
+    right: -35px;
+    top: -35px;
+
+    border-radius: 50%;
+
+    filter: blur(5px);
+
+    opacity: 0.35;
+}
+
+
+/* Nội dung StatCard */
+
+.stat-content {
+    position: relative;
+    z-index: 1;
+}
+
+.stat-content p {
+    margin: 0 0 10px;
+
+    font-size: 12px;
+
+    color: #85899e;
+}
+
+.stat-content h2 {
+    margin: 0 0 6px;
+
+    font-size: 27px;
+}
+
+.stat-content span {
+    font-size: 11px;
+
+    color: #62667c;
+}
+
+
+/* Khu vực icon */
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+
+    border-radius: 10px;
+
+    background: rgba(255, 255, 255, 0.05);
+}
+
+
+/* Các màu khác nhau cho StatCard */
+
+.stat-card.purple::after {
+    background: #8b5cf6;
+}
+
+.stat-card.blue::after {
+    background: #3b82f6;
+}
+
+.stat-card.pink::after {
+    background: #ec4899;
+}
+
+.stat-card.cyan::after {
+    background: #06b6d4;
+}
+
+
+/* =========================================================
+   DASHBOARD ROW
+========================================================= */
+
+.dashboard-row {
+    display: grid;
+
+    grid-template-columns: 2fr 1fr;
+
+    gap: 20px;
+
+    margin-bottom: 20px;
+}
+
+
+/* =========================================================
+   CARD CHUNG
+========================================================= */
+
+.dashboard-card {
+    padding: 20px;
+
+    border-radius: 14px;
+
+    border: 1px solid rgba(255, 255, 255, 0.06);
+
+    background:
+        rgba(17, 19, 32, 0.88);
+}
+
+
+/* Tiêu đề bên trong card */
+
+.card-title {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    margin-bottom: 20px;
+}
+
+.card-title h3 {
+    margin: 0;
+
+    font-size: 15px;
+}
+
+.card-title p {
+    margin: 5px 0 0;
+
+    font-size: 11px;
+
+    color: #666b82;
+}
+
+
+/* Select trong biểu đồ */
+
+.card-title select {
+    padding: 7px 10px;
+
+    border-radius: 7px;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    background: #151726;
+
+    color: #85899e;
+
+    font-size: 11px;
+}
+
+
+/* =========================================================
+   SALES CHART
+========================================================= */
+
+.chart {
+    height: 260px;
+
+    display: flex;
+}
+
+
+/* Trục Y */
+
+.chart-y {
+    width: 40px;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: space-between;
+
+    padding-bottom: 25px;
+
+    color: #55596d;
+
+    font-size: 10px;
+}
+
+
+/* Khu vực chính */
+
+.chart-area {
+    position: relative;
+
+    flex: 1;
+
+    height: 100%;
+}
+
+
+/* Đường lưới */
+
+.chart-grid {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 25px;
+
+    background:
+        repeating-linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.05) 0,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 1px,
+            transparent 25%
+        );
+}
+
+
+/* Các cột */
+
+.chart-bars {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 25px;
+
+    display: flex;
+
+    align-items: flex-end;
+
+    justify-content: space-around;
+
+    gap: 12px;
+}
+
+
+/* Một cột */
+
+.bar {
+    width: 32px;
+
+    max-width: 12%;
+
+    min-height: 15px;
+
+    border-radius: 6px 6px 2px 2px;
+
+    background:
+        linear-gradient(
+            180deg,
+            #8b5cf6,
+            #4f46e5
+        );
+
+    box-shadow:
+        0 0 15px rgba(124, 58, 237, 0.2);
+
+    transition: 0.2s;
+}
+
+
+/* Khi rê chuột vào cột */
+
+.bar:hover {
+    transform: translateY(-4px);
+
+    filter: brightness(1.2);
+}
+
+
+/* Tên các ngày */
+
+.chart-labels {
+    position: absolute;
+
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    display: flex;
+
+    justify-content: space-around;
+
+    color: #55596d;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   ORDER STATUS
+========================================================= */
+
+.order-status-card {
+    min-height: 330px;
+}
+
+
+/* Khu vực vòng tròn */
+
+.status-chart {
+    display: flex;
+
+    justify-content: center;
+
+    margin: 15px 0 25px;
+}
+
+
+/* Vòng tròn */
+
+.status-circle {
+    width: 130px;
+    height: 130px;
+
+    border-radius: 50%;
+
+    display: flex;
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    background:
+        radial-gradient(
+            circle,
+            #16182b 52%,
+            transparent 53%
+        );
+
+    border: 10px solid #312e81;
+
+    box-shadow:
+        0 0 25px rgba(99, 102, 241, 0.12);
+}
+
+.status-circle strong {
+    font-size: 25px;
+}
+
+.status-circle span {
+    margin-top: 4px;
+
+    font-size: 10px;
+
+    color: #696e84;
+}
+
+
+/* Danh sách trạng thái */
+
+.status-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+
+/* Một trạng thái */
+
+.status-item {
+    display: grid;
+
+    grid-template-columns: 10px 1fr auto;
+
+    align-items: center;
+
+    gap: 9px;
+
+    font-size: 11px;
+
+    color: #85899e;
+}
+
+
+/* Chấm trạng thái */
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+
+    border-radius: 50%;
+}
+
+
+/* Màu từng trạng thái */
+
+.status-dot.pending {
+    background: #f59e0b;
+}
+
+.status-dot.processing {
+    background: #3b82f6;
+}
+
+.status-dot.completed {
+    background: #22c55e;
+}
+
+.status-dot.cancelled {
+    background: #ef4444;
+}
+
+
+.status-item strong {
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   RECENT ORDERS
+========================================================= */
+
+.recent-orders {
+    overflow: hidden;
+}
+
+
+/* Link "Xem tất cả" */
+
+.recent-orders .card-title a {
+    color: #8b5cf6;
+
+    font-size: 11px;
+
+    text-decoration: none;
+}
+
+.recent-orders .card-title a:hover {
+    color: #a78bfa;
+}
+
+
+/* Bảng đơn hàng */
+
+.order-table {
+    width: 100%;
+}
+
+
+/* Header bảng */
+
+.order-header,
+.order-row {
+    display: grid;
+
+    grid-template-columns:
+        0.8fr
+        1.5fr
+        1fr
+        1fr;
+
+    align-items: center;
+
+    gap: 15px;
+}
+
+
+/* Header */
+
+.order-header {
+    padding: 10px 0;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    color: #55596d;
+
+    font-size: 10px;
+}
+
+
+/* Một dòng đơn hàng */
+
+.order-row {
+    min-height: 48px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+
+    color: #85899e;
+
+    font-size: 11px;
+}
+
+
+/* Mã đơn và tiền */
+
+.order-row strong {
+    color: #d5d7e2;
+}
+
+
+/* Badge trạng thái */
+
+.order-badge {
+    width: fit-content;
+
+    padding: 5px 8px;
+
+    border-radius: 5px;
+
+    background: rgba(139, 92, 246, 0.12);
+
+    color: #a78bfa;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   BRAND CARD
+========================================================= */
+
+.brand-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 13px;
+}
+
+
+/* Một thương hiệu */
+
+.brand-item {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding-bottom: 12px;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+    font-size: 12px;
+
+    color: #85899e;
+}
+
+
+.brand-item strong {
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   Khi màn hình nhỏ hơn 1100px
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    /* 4 StatCard chuyển thành 2 cột */
+    .stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Các khu vực Dashboard chuyển thành 1 cột */
+    .dashboard-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   Khi màn hình nhỏ hơn 750px
+========================================================= */
+
+@media (max-width: 750px) {
+
+    /* Sidebar chuyển thành chiều ngang */
+    .sidebar {
+        position: relative;
+
+        width: 100%;
+        height: auto;
+
+        padding: 15px;
+    }
+
+    /* Main không còn chừa khoảng cho Sidebar */
+    .dashboard-main {
+        width: 100%;
+
+        margin-left: 0;
+
+        padding: 20px;
+    }
+
+    /* Dashboard chuyển thành dạng dọc */
+    .dashboard {
+        display: block;
+    }
+
+    /* Menu Sidebar nằm ngang */
+    .sidebar-menu {
+        flex-direction: row;
+
+        flex-wrap: wrap;
+    }
+
+    /* 1 cột StatCard */
+    .stat-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Ẩn footer trên màn hình nhỏ */
+    .sidebar-footer {
+        display: none;
+    }
+
+    /* Tiêu đề Dashboard xếp dọc */
+    .dashboard-title {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 12px;
+    }
+
+    /* Bảng đơn hàng có thể cuộn ngang */
+    .order-table {
+        overflow-x: auto;
+    }
+
+    .order-header,
+    .order-row {
+        min-width: 550px;
+    }
+}
