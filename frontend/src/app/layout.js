@@ -29,6 +29,7 @@ export default function RootLayout({ children }) {
           src="/js/data.js"
           strategy="afterInteractive"
         />
+        {/* beforeInteractive chủ yếu dành cho những script thực sự cần chạy trước khi Next.js hydrate trang. */}
 
         <Script
           src="/js/store.js"
