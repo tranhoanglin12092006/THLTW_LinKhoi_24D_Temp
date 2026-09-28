@@ -1,277 +1,406 @@
-"use client";
-// Báo cho Next.js biết đây là Client Component.
-// Vì component này sử dụng useEffect và window nên phải chạy ở phía trình duyệt.
 
+"use client";
+
+// useEffect dùng để chạy JavaScript
+// sau khi giao diện React đã được render.
 import { useEffect } from "react";
-// Import useEffect từ React.
-// useEffect cho phép chạy JavaScript sau khi component đã được render trên trình duyệt.
+
 
 export default function HomePageContent() {
-    // Tạo component HomePageContent.
-    // export default để component này có thể được import ở file khác.
 
+    // useEffect sẽ chạy sau khi component xuất hiện trên trang.
     useEffect(() => {
-        // useEffect sẽ chạy sau khi component được render xong.
-        // Đây là nơi chúng ta lấy dữ liệu từ JavaScript cũ và đưa vào HTML.
 
-        const data = window.TECHNOVA_DATA;
-        // Lấy dữ liệu sản phẩm, tin tức... từ biến toàn cục TECHNOVA_DATA.
-        // Biến này phải được tạo trước đó trong file /public/js/data.js.
+        // Biến này dùng để kiểm tra component còn tồn tại hay không.
         //
-        // Ví dụ:
-        // window.TECHNOVA_DATA = {
-        //     products: [...],
-        //     news: [...]
-        // };
+        // false = component vẫn đang hoạt động.
+        // true  = component đã bị rời khỏi trang.
+        let cancelled = false;
 
-        const renderProductCard = window.renderProductCard;
-        // Lấy hàm renderProductCard từ window.
-        // Hàm này có nhiệm vụ biến một sản phẩm thành một đoạn HTML card sản phẩm.
-        //
-        // Ví dụ:
-        // product => `<div>...</div>`
 
-        if (!data || typeof renderProductCard !== "function") return;
-        // Kiểm tra xem dữ liệu và hàm render sản phẩm có tồn tại hay không.
-        //
-        // Nếu:
-        // - data không tồn tại
-        // hoặc
-        // - renderProductCard không phải là function
-        //
-        // thì dừng useEffect bằng return.
-        //
-        // Mục đích: tránh lỗi JavaScript khi data.js chưa load.
+        // =====================================================
+        // HÀM LẤY DỮ LIỆU VÀ HIỂN THỊ SẢN PHẨM
+        // =====================================================
 
-        const renderProducts = (id, products) => {
-            // Tạo một function dùng chung để render danh sách sản phẩm.
-            //
-            // id:
-            //    ID của thẻ HTML muốn chứa sản phẩm.
-            //
-            // products:
-            //    Mảng sản phẩm cần hiển thị.
+        const mountLegacyShopData = () => {
 
-            const container = document.getElementById(id);
-            // Tìm phần tử HTML dựa vào id.
+            // Nếu component đã bị hủy
+            // thì không làm gì nữa.
+            if (cancelled) return;
+
+
+            // =================================================
+            // 1. LẤY DỮ LIỆU TỪ FILE data.js
+            // =================================================
+
+            // TECHNOVA_DATA được khai báo trong file data.js.
             //
             // Ví dụ:
-            // <div id="flash-sale-grid"></div>
             //
-            // document.getElementById("flash-sale-grid")
-            // sẽ lấy được thẻ div này.
+            // window.TECHNOVA_DATA = {
+            //     products: [...],
+            //     news: [...]
+            // }
+            //
+            // Ở đây chúng ta lấy toàn bộ dữ liệu.
+            const data = window.TECHNOVA_DATA;
 
-            if (container) {
-                // Kiểm tra xem container có tồn tại hay không.
 
-                container.innerHTML = products.map(renderProductCard).join("");
-                // Chuyển toàn bộ sản phẩm thành HTML.
-                //
-                // products.map(renderProductCard)
-                // sẽ chạy renderProductCard cho từng sản phẩm.
+            // Lấy hàm renderProductCard().
+            //
+            // Hàm này thường nằm trong main.js.
+            //
+            // Nó có nhiệm vụ:
+            //
+            // product
+            //    ↓
+            // HTML của product card
+            //
+            const renderProductCard =
+                window.renderProductCard;
+
+
+            // =================================================
+            // 2. KIỂM TRA DATA ĐÃ LOAD CHƯA
+            // =================================================
+
+            // Nếu chưa có data
+            // hoặc renderProductCard chưa tồn tại
+            // thì chờ 150ms rồi thử lại.
+            if (
+                !data ||
+                typeof renderProductCard !== "function"
+            ) {
+
+                window.setTimeout(
+                    mountLegacyShopData,
+                    150
+                );
+
+                return;
+            }
+
+
+            // =================================================
+            // 3. HÀM DÙNG ĐỂ HIỂN THỊ DANH SÁCH SẢN PHẨM
+            // =================================================
+
+            // id:
+            // ID của thẻ HTML muốn hiển thị sản phẩm.
+            //
+            // products:
+            // Danh sách sản phẩm cần hiển thị.
+            const renderProductsList = (id, products) => {
+
+                // Nếu component đã bị hủy
+                // thì dừng lại.
+                if (cancelled) return;
+
+
+                // Tìm phần tử HTML theo ID.
                 //
                 // Ví dụ:
-                // [
-                //   product1,
-                //   product2,
-                //   product3
-                // ]
                 //
-                // trở thành:
-                // [
-                //   "<div>Product 1</div>",
-                //   "<div>Product 2</div>",
-                //   "<div>Product 3</div>"
-                // ]
+                // <div id="new-products-grid"></div>
                 //
-                // join("")
-                // ghép các chuỗi HTML thành một chuỗi duy nhất.
+                // document.getElementById()
+                // sẽ tìm thẻ div này.
+                const container =
+                    document.getElementById(id);
+
+
+                // Nếu không tìm thấy container
+                // hoặc products không phải là mảng
+                // thì không làm gì.
+                if (
+                    !container ||
+                    !Array.isArray(products)
+                ) {
+                    return;
+                }
+
+
+                // =================================================
+                // 4. BIẾN PRODUCT THÀNH HTML
+                // =================================================
+
+                // products.map(renderProductCard)
                 //
-                // Sau đó innerHTML đưa HTML đó vào container.
-            }
-        };
+                // Có thể hiểu đơn giản:
+                //
+                // Sản phẩm 1 → renderProductCard()
+                // Sản phẩm 2 → renderProductCard()
+                // Sản phẩm 3 → renderProductCard()
+                //
+                // Sau đó .join("")
+                // nối tất cả HTML lại thành một chuỗi.
+                //
+                // Cuối cùng đưa HTML vào container.
+                container.innerHTML =
+                    products
+                        .map(renderProductCard)
+                        .join("");
+            };
 
-        renderProducts(
-            // Gọi function renderProducts.
 
-            "flash-sale-grid",
-            // ID của khu vực hiển thị sản phẩm Flash Sale.
+            // =================================================
+            // 5. HIỂN THỊ SẢN PHẨM FLASH SALE
+            // =================================================
 
-            data.products.filter((product) => product.isSale).slice(0, 4),
-            // Lấy danh sách sản phẩm từ data.products.
-            //
-            // filter((product) => product.isSale)
-            // chỉ lấy sản phẩm có isSale = true.
+            // Lấy tất cả sản phẩm
+            // có isSale = true.
             //
             // slice(0, 4)
             // chỉ lấy 4 sản phẩm đầu tiên.
-        );
+            renderProductsList(
+                "flash-sale-grid",
 
-        renderProducts(
-            // Render tiếp danh sách sản phẩm mới.
+                data.products
+                    .filter((product) => product.isSale)
+                    .slice(0, 4)
+            );
 
-            "new-products-grid",
-            // ID của khu vực sản phẩm mới.
 
-            data.products.filter((product) => product.isNew).slice(0, 8),
-            // Chỉ lấy sản phẩm có isNew = true.
-            // Sau đó chỉ lấy tối đa 8 sản phẩm.
-        );
+            // =================================================
+            // 6. HIỂN THỊ SẢN PHẨM MỚI
+            // =================================================
 
-        renderProducts(
-            // Render tiếp danh sách sản phẩm hot.
+            // Lấy sản phẩm có isNew = true.
+            //
+            // Chỉ lấy 8 sản phẩm đầu tiên.
+            renderProductsList(
+                "new-products-grid",
 
-            "hot-products-grid",
-            // ID của khu vực sản phẩm hot.
+                data.products
+                    .filter((product) => product.isNew)
+                    .slice(0, 8)
+            );
 
-            data.products.filter((product) => product.isHot).slice(0, 8),
-            // Chỉ lấy sản phẩm có isHot = true.
-            // Sau đó lấy tối đa 8 sản phẩm.
-        );
 
-        const newsContainer = document.getElementById("home-news-grid");
-        // Tìm khu vực HTML dùng để hiển thị tin tức trên trang Home.
-        //
-        // Ví dụ:
-        // <div id="home-news-grid"></div>
+            // =================================================
+            // 7. HIỂN THỊ SẢN PHẨM HOT
+            // =================================================
 
-        if (newsContainer) {
-            // Kiểm tra xem khu vực tin tức có tồn tại hay không.
+            // Lấy sản phẩm có isHot = true.
+            //
+            // Chỉ lấy 8 sản phẩm đầu tiên.
+            renderProductsList(
+                "hot-products-grid",
 
-            newsContainer.innerHTML = data.news.slice(0, 3).map((article) => `
-                // Lấy 3 bài viết đầu tiên từ data.news.
+                data.products
+                    .filter((product) => product.isHot)
+                    .slice(0, 8)
+            );
+
+
+            // =================================================
+            // 8. TÌM KHU VỰC HIỂN THỊ BÀI VIẾT
+            // =================================================
+
+            // Ví dụ HTML:
+            //
+            // <div id="home-news-grid"></div>
+            //
+            // Chúng ta tìm thẻ div đó.
+            const newsContainer =
+                document.getElementById("home-news-grid");
+
+
+            // Kiểm tra:
+            //
+            // 1. Có tìm thấy khu vực tin tức không?
+            // 2. data.news có phải mảng không?
+            if (
+                newsContainer &&
+                Array.isArray(data.news)
+            ) {
+
+
+                // =================================================
+                // 9. LẤY 3 BÀI VIẾT ĐẦU TIÊN
+                // =================================================
+
+                // data.news
+                //     ↓
+                // slice(0, 3)
+                //     ↓
+                // lấy 3 bài đầu tiên
                 //
-                // map() chạy qua từng bài viết.
+                // map()
+                //     ↓
+                // biến từng bài viết thành HTML
                 //
-                // Mỗi article sẽ được biến thành một đoạn HTML.
-                
-                <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
-                    // Card chứa một bài viết.
-                    // Tailwind CSS dùng để tạo giao diện.
+                // join("")
+                //     ↓
+                // nối tất cả HTML lại.
+                newsContainer.innerHTML =
+                    data.news
+                        .slice(0, 3)
+                        .map((article) => `
 
-                    <div class="aspect-[16/10] overflow-hidden relative">
-                        // Khu vực hình ảnh bài viết.
-                        // aspect-[16/10] tạo tỷ lệ khung hình 16:10.
+                            <!-- ========================= -->
+                            <!-- CARD BÀI VIẾT -->
+                            <!-- ========================= -->
 
-                        <img
-                            src="${article.image}"
-                            alt="${article.title}"
-                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        >
-                        // Hiển thị hình ảnh bài viết.
-                        //
-                        // ${article.image}
-                        // lấy đường dẫn hình ảnh từ dữ liệu.
-                        //
-                        // ${article.title}
-                        // lấy tiêu đề làm alt cho ảnh.
+                            <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
 
-                        <span class="absolute top-3 left-3 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-[11px] font-bold rounded-lg">
-                            ${article.category}
-                        </span>
-                        // Hiển thị danh mục của bài viết.
-                        //
-                        // Ví dụ:
-                        // Công nghệ
-                        // Laptop
-                        // Smartphone
-                    </div>
+                                <!-- Hình ảnh -->
+                                <div class="aspect-[16/10] overflow-hidden relative">
 
-                    <div class="p-5 flex-1 flex flex-col justify-between">
-                        // Phần nội dung của bài viết.
+                                    <img
+                                        src="${article.image}"
+                                        alt="${article.title}"
+                                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    >
 
-                        <div>
-                            <div class="flex items-center gap-2 text-[11px] text-slate-400 mb-2">
-                                <span>${article.date}</span>
-                                // Ngày đăng bài.
+                                    <!-- Danh mục -->
+                                    <span class="absolute top-3 left-3 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-[11px] font-bold rounded-lg">
+                                        ${article.category}
+                                    </span>
 
-                                <span>•</span>
-                                // Dấu chấm ngăn cách.
+                                </div>
 
-                                <span>${article.readTime}</span>
-                                // Thời gian đọc bài.
+
+                                <!-- Nội dung bài viết -->
+                                <div class="p-5 flex-1 flex flex-col justify-between">
+
+                                    <div>
+
+                                        <!-- Ngày + thời gian đọc -->
+                                        <div class="flex items-center gap-2 text-[11px] text-slate-400 mb-2">
+
+                                            <span>
+                                                ${article.date}
+                                            </span>
+
+                                            <span>•</span>
+
+                                            <span>
+                                                ${article.readTime}
+                                            </span>
+
+                                        </div>
+
+
+                                        <!-- Tiêu đề -->
+                                        <h3 class="font-bold text-slate-900 dark:text-white text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
+
+                                            <a
+                                                href="news-detail.html?id=${article.id}"
+                                            >
+                                                ${article.title}
+                                            </a>
+
+                                        </h3>
+
+
+                                        <!-- Mô tả -->
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
+                                            ${article.description}
+                                        </p>
+
+                                    </div>
+
+
+                                    <!-- Footer của card -->
+                                    <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+
+                                        <!-- Tác giả -->
+                                        <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                                            Bởi ${article.author}
+                                        </span>
+
+
+                                        <!-- Link đọc tiếp -->
+                                        <a
+                                            href="news-detail.html?id=${article.id}"
+                                            class="text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1"
+                                        >
+                                            Đọc tiếp &rarr;
+                                        </a>
+
+                                    </div>
+
+                                </div>
+
                             </div>
 
-                            <h3 class="font-bold text-slate-900 dark:text-white text-base leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
-                                // Tiêu đề bài viết.
+                        `)
+                        .join("");
+            }
 
-                                <a href="news-detail.html?id=${article.id}">
-                                    ${article.title}
-                                </a>
-                                // Link tới trang chi tiết bài viết.
-                                //
-                                // article.id được đưa vào URL.
-                                //
-                                // Ví dụ:
-                                // news-detail.html?id=5
-                            </h3>
 
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                                ${article.description}
-                            </p>
-                            // Hiển thị mô tả ngắn của bài viết.
-                        </div>
+            // =================================================
+            // 10. KHỞI TẠO ICON LUCIDE
+            // =================================================
 
-                        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            // Phần cuối của card.
-                            // Có đường viền phía trên.
+            // Sau khi chúng ta dùng innerHTML
+            // để thêm HTML mới vào trang,
+            // cần gọi lại createIcons()
+            // để Lucide nhận diện các icon mới.
+            window.lucide?.createIcons();
 
-                            <span class="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                Bởi ${article.author}
-                            </span>
-                            // Hiển thị tên tác giả.
 
-                            <a
-                                href="news-detail.html?id=${article.id}"
-                                class="text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1"
-                            >
-                                Đọc tiếp &rarr;
-                            </a>
-                            // Link đọc tiếp bài viết.
-                        </div>
-                    </div>
-                </div>
-            `).join("");
-            // map() tạo HTML cho từng bài viết.
+            // =================================================
+            // 11. CẬP NHẬT WISHLIST
+            // =================================================
+
+            // Nếu hàm updateWishlistUI tồn tại
+            // thì gọi nó.
             //
-            // join("")
-            // ghép tất cả HTML lại thành một chuỗi.
+            // Hàm này có thể dùng để:
+            // - kiểm tra sản phẩm yêu thích
+            // - đổi trạng thái icon tim
+            // - cập nhật wishlist
+            window.updateWishlistUI?.();
+        };
+
+
+        // =====================================================
+        // 12. CHẠY HÀM
+        // =====================================================
+
+        // Bắt đầu lấy dữ liệu và hiển thị sản phẩm.
+        mountLegacyShopData();
+
+
+        // =====================================================
+        // 13. CLEANUP
+        // =====================================================
+
+        // Khi rời khỏi trang,
+        // React sẽ chạy đoạn này.
+        return () => {
+
+            // Đánh dấu component đã bị hủy.
             //
-            // innerHTML
-            // đưa chuỗi HTML vào #home-news-grid.
-        }
+            // Nếu lúc này setTimeout()
+            // đang chờ chạy lại mountLegacyShopData()
+            // thì lần chạy sau sẽ bị:
+            //
+            // if (cancelled) return;
+            //
+            // chặn lại.
+            cancelled = true;
+        };
 
-        window.lucide?.createIcons();
-        // Gọi thư viện Lucide để chuyển các icon thành SVG.
-        //
-        // Dấu ?. gọi là Optional Chaining.
-        //
-        // Nếu window.lucide tồn tại:
-        //     gọi createIcons()
-        //
-        // Nếu window.lucide chưa tồn tại:
-        //     không bị crash.
 
-        window.updateWishlistUI?.();
-        // Gọi function updateWishlistUI nếu function này tồn tại.
-        //
-        // Function này thường dùng để cập nhật giao diện
-        // nút yêu thích / wishlist.
-
+        // [] nghĩa là useEffect chỉ chạy một lần
+        // sau khi component được mount.
     }, []);
-    // [] nghĩa là useEffect chỉ chạy một lần sau lần render đầu tiên.
-    //
-    // Component mount
-    //      ↓
-    // useEffect chạy
-    //      ↓
-    // Lấy data
-    //      ↓
-    // Render sản phẩm + tin tức
 
-    return null;
-    // Component này không tự tạo HTML bằng JSX.
+
+    // =====================================================
+    // COMPONENT NÀY KHÔNG TẠO HTML
+    // =====================================================
+
+    // Vì sản phẩm và tin tức được thêm trực tiếp
+    // vào DOM bằng JavaScript:
     //
-    // Nó chỉ dùng JavaScript để tìm các container có sẵn
-    // trong DOM và đưa HTML vào đó.
+    // document.getElementById()
+    // container.innerHTML
+    //
+    // nên component này không cần return giao diện.
+    return null;
 }
+
