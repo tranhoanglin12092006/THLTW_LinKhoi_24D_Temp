@@ -10,7 +10,6 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Http\JsonResponse;
 
-
 class CartController extends Controller
 {
     /**
@@ -18,18 +17,29 @@ class CartController extends Controller
      */
     public function index()
     {
-        // Lấy giỏ hàng và lấy luôn các chi tiết bên trong.
-        $carts = Cart::with('chiTietGioHangs.sanPham')
-            ->orderBy('id')
-            ->get();
+        try {
+            // Lấy giỏ hàng và lấy luôn các chi tiết bên trong.
+            $carts = Cart::with('chiTietGioHangs.sanPham')
+                ->orderBy('id')
+                ->get();
 
-        return CartResource::collection($carts);
+            return response()->json([
+                'message' => 'Lấy danh sách giỏ hàng thành công.',
+                'data' => CartResource::collection($carts)
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Lấy danh sách giỏ hàng thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * Tạo một giỏ hàng mới.
      */
-    public function store(CartRequest $request): JsonResponse|CartResource
+    public function store(CartRequest $request): JsonResponse
     {
         try {
             // Lấy dữ liệu đã được kiểm tra.
@@ -39,10 +49,14 @@ class CartController extends Controller
             $cart = Cart::create($data);
 
             // Trả về giỏ hàng vừa tạo.
-            return new CartResource($cart);
+            return response()->json([
+                'message' => 'Tạo giỏ hàng thành công.',
+                'data' => new CartResource($cart)
+            ], 201);
+
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Thêm giỏ hàng thất bại.',
+                'message' => 'Tạo giỏ hàng thất bại.',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -53,17 +67,28 @@ class CartController extends Controller
      */
     public function show($id)
     {
-        // Tìm giỏ hàng theo ID và lấy các chi tiết bên trong.
-        $cart = Cart::with('chiTietGioHangs.sanPham')
-            ->findOrFail($id);
+        try {
+            // Tìm giỏ hàng theo ID và lấy các chi tiết bên trong.
+            $cart = Cart::with('chiTietGioHangs.sanPham')
+                ->findOrFail($id);
 
-        return new CartResource($cart);
+            return response()->json([
+                'message' => 'Lấy thông tin giỏ hàng thành công.',
+                'data' => new CartResource($cart)
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Không tìm thấy giỏ hàng.',
+                'error' => $e->getMessage()
+            ], 404);
+        }
     }
 
     /**
      * Cập nhật thông tin giỏ hàng.
      */
-    public function update(CartRequest $request, $id): JsonResponse|CartResource
+    public function update(CartRequest $request, $id): JsonResponse
     {
         try {
             // Tìm giỏ hàng theo ID.
@@ -78,7 +103,11 @@ class CartController extends Controller
             // Lấy lại dữ liệu mới nhất.
             $cart->refresh();
 
-            return new CartResource($cart);
+            return response()->json([
+                'message' => 'Cập nhật giỏ hàng thành công.',
+                'data' => new CartResource($cart)
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Cập nhật giỏ hàng thất bại.',
@@ -86,6 +115,7 @@ class CartController extends Controller
             ], 500);
         }
     }
+
     /**
      * Xóa một giỏ hàng.
      */
@@ -104,6 +134,7 @@ class CartController extends Controller
             return response()->json([
                 'message' => 'Xóa giỏ hàng thành công.'
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Xóa giỏ hàng thất bại.',
@@ -115,7 +146,7 @@ class CartController extends Controller
     /**
      * Thêm sản phẩm vào giỏ hàng.
      */
-    public function addItem(CartItemRequest $request): JsonResponse|CartItem
+    public function addItem(CartItemRequest $request): JsonResponse
     {
         try {
             // Lấy dữ liệu đã được kiểm tra.
@@ -130,18 +161,23 @@ class CartController extends Controller
                 // Nếu sản phẩm đã có thì cộng thêm số lượng.
                 $item->so_luong += $data['so_luong'];
                 $item->save();
+
+                $message = 'Sản phẩm đã có trong giỏ hàng, số lượng đã được cập nhật.';
             } else {
                 // Nếu chưa có thì tạo chi tiết giỏ hàng mới.
                 $item = CartItem::create($data);
+
+                $message = 'Thêm sản phẩm vào giỏ hàng thành công.';
             }
 
             // Lấy thêm thông tin sản phẩm.
             $item->load('sanPham');
 
             return response()->json([
-                'message' => 'Thêm sản phẩm vào giỏ hàng thành công.',
+                'message' => $message,
                 'data' => new CartItemResource($item)
-            ], 201);
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Thêm sản phẩm vào giỏ hàng thất bại.',
@@ -153,7 +189,7 @@ class CartController extends Controller
     /**
      * Cập nhật số lượng một sản phẩm trong giỏ hàng.
      */
-    public function updateItem(CartItemRequest $request, $id): JsonResponse|CartItem
+    public function updateItem(CartItemRequest $request, $id): JsonResponse
     {
         try {
             // Tìm chi tiết giỏ hàng theo ID.
@@ -171,12 +207,13 @@ class CartController extends Controller
             $item->load('sanPham');
 
             return response()->json([
-                'message' => 'Cập nhật số lượng thành công.',
+                'message' => 'Cập nhật số lượng sản phẩm thành công.',
                 'data' => new CartItemResource($item)
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Cập nhật số lượng thất bại.',
+                'message' => 'Cập nhật số lượng sản phẩm thất bại.',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -197,6 +234,7 @@ class CartController extends Controller
             return response()->json([
                 'message' => 'Xóa sản phẩm khỏi giỏ hàng thành công.'
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Xóa sản phẩm khỏi giỏ hàng thất bại.',
@@ -205,3 +243,4 @@ class CartController extends Controller
         }
     }
 }
+
