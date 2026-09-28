@@ -23,19 +23,22 @@ export default function RootLayout({ children }) {
         {children}
         <Script
           src="https://unpkg.com/lucide@latest"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Script
           src="/js/data.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
+        {/* beforeInteractive chủ yếu dành cho những script thực sự cần chạy trước khi Next.js hydrate trang. */}
+
         <Script
           src="/js/store.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
+
         <Script
           src="/js/main.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Script id="restore-theme-after-hydration" strategy="afterInteractive">
           {"window.initTheme?.();"}
