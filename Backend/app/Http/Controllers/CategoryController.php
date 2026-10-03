@@ -11,26 +11,28 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class CategoryController extends Controller
 {
     // GET /api/categories
-    // Lấy danh sách danh mục cha và các danh mục con
+    // Lấy danh sách danh mục (phân trang 10 danh mục/trang)
     public function index(Request $request): AnonymousResourceCollection
     {
-        // Lấy số danh mục muốn hiển thị trên mỗi trang.
-        // Nếu không truyền thì mặc định là 10.
-        // Không cho phép nhỏ hơn 1 và lớn hơn 100.
+        // Số danh mục mỗi trang (mặc định 10)
         $perPage = max(1, min((int) $request->input('per_page', 10), 100));
 
-        // Chỉ lấy các danh mục đang hoạt động.
-        // whereNull('parent_id') để chỉ lấy danh mục cha.
-        // with('children') để lấy thêm các danh mục con.
-        // orderBy('id') sắp xếp danh mục theo ID.
-        // paginate() chia danh sách thành nhiều trang.
-        $categories = Category::active()
-            ->whereNull('parent_id')
-            ->with(['children' => fn($query) => $query->active()])
-            ->orderBy('id')
-            ->paginate($perPage);
+        // Khởi tạo query kèm thông tin danh mục cha
+        $query = Category::with('parent')->orderBy('id', 'desc');
 
-        // Chuyển dữ liệu danh mục thành dạng JSON thông qua CategoryResource.
+        // Nếu chỉ muốn lấy danh mục đang hoạt động (cho shop)
+        if ($request->boolean('active_only')) {
+            $query->active();
+        }
+
+        // Nếu muốn tìm kiếm theo tên
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('ten', 'like', "%{$search}%");
+        }
+
+        $categories = $query->paginate($perPage);
+
         return CategoryResource::collection($categories);
     }
 
