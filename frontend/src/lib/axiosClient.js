@@ -34,6 +34,15 @@ axiosClient.interceptors.request.use(
             }
         }
 
+
+        // ===== THÊM ĐOẠN NÀY =====
+        // Nếu dữ liệu gửi đi là FormData (có file ảnh)
+        // thì xóa Content-Type để trình duyệt tự đặt đúng loại
+        if (config.data instanceof FormData) {
+            config.headers.setContentType(undefined);
+        }
+        // =========================
+
         return config;
     },
     (error) => {
