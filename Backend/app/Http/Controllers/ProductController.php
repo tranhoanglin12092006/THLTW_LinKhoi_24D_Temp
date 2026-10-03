@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Storage;
 use App\Models\Product;
 use App\Http\Resources\ProductResource;
 use App\Http\Requests\ProductRequest;
@@ -52,17 +53,24 @@ class ProductController extends Controller
     public function store(ProductRequest $request)
     {
         try {
-            // Lấy dữ liệu đã được ProductRequest kiểm tra.
             $data = $request->validated();
 
-            // Tạo sản phẩm mới trong database.
+            // Lưu hình ảnh
+            if ($request->hasFile('hinh_anh')) {
+                $data['hinh_anh'] = $request
+                    ->file('hinh_anh')
+                    ->store('products', 'public');
+            }
+
             $product = Product::create($data);
 
-            // Trả về thông tin sản phẩm dưới dạng JSON.
-            return new ProductResource($product);
+            return response()->json([
+                'message' => 'Thêm sản phẩm thành công!',
+                'data' => new ProductResource($product)
+            ], 201);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Thêm sản phẩm thất bại',
+                'message' => 'Thêm sản phẩm thất bại!',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -75,25 +83,38 @@ class ProductController extends Controller
     public function update(ProductRequest $request, $id)
     {
         try {
-            // Tìm sản phẩm theo ID.
             $product = Product::findOrFail($id);
 
-            // Lấy dữ liệu đã được ProductRequest kiểm tra.
             $data = $request->validated();
 
-            // Cập nhật sản phẩm.
+            if ($request->hasFile('hinh_anh')) {
+                // Có ảnh mới: xóa ảnh cũ trong thư mục (nếu có)
+                if ($product->hinh_anh) {
+                    Storage::disk('public')->delete($product->hinh_anh);
+                }
+
+                // Lưu ảnh mới vào storage/app/public/products
+                $data['hinh_anh'] = $request
+                    ->file('hinh_anh')
+                    ->store('products', 'public');
+            } else {
+                // Không chọn ảnh mới: bỏ field ảnh ra để giữ nguyên ảnh cũ
+                unset($data['hinh_anh']);
+            }
+
             $product->update($data);
 
-            // Trả về sản phẩm sau khi cập nhật.
-            return new ProductResource($product);
+            return response()->json([
+                'message' => 'Cập nhật sản phẩm thành công!',
+                'data' => new ProductResource($product)
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Cập nhật sản phẩm thất bại',
+                'message' => 'Cập nhật sản phẩm thất bại!',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
-
     /**
      * Xóa sản phẩm.
      * DELETE /api/products/{id}
@@ -102,6 +123,11 @@ class ProductController extends Controller
     {
         try {
             $product = Product::findOrFail($id);
+
+            // Xóa file ảnh trước, rồi mới xóa sản phẩm
+            if ($product->hinh_anh) {
+                Storage::disk('public')->delete($product->hinh_anh);
+            }
 
             $product->delete();
 
