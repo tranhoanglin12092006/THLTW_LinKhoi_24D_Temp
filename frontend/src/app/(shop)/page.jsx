@@ -23,12 +23,14 @@ export default function ShopHomePage() {
             setLoading(true);
             try {
                 // Gọi song song 3 API lấy sản phẩm mới, sale và hot
-                const [newRes, hotRes, saleRes] = await Promise.all([
+                const [newRes, hotRes, saleRes] = await Promise.all([ //Gọi 3 API cùng lúc và chờ cả 3 API trả kết quả.
                     getNewProducts(4),
                     getHotProducts(4),
                     getSaleProducts(4),
                 ]);
+                //Nếu newRes là mảng → lấy newRes.
 
+                //Nếu không phải mảng → lấy[].
                 setNewProducts(Array.isArray(newRes) ? newRes : []);
                 setHotProducts(Array.isArray(hotRes) ? hotRes : []);
                 setSaleProducts(Array.isArray(saleRes) ? saleRes : []);
@@ -44,14 +46,14 @@ export default function ShopHomePage() {
 
     return (
         <main className="flex-1 space-y-12 sm:space-y-16 pb-16">
-            
+
             {/* =========================================================
                 1. HERO SECTION (BANNER ĐẦU TRANG)
             ========================================================= */}
             <section className="relative overflow-hidden pt-8 pb-16 lg:py-20 bg-gradient-to-b from-blue-50/60 via-slate-50 to-slate-50 dark:from-slate-900/60 dark:via-slate-950 dark:to-slate-950">
                 <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="absolute top-1/2 -right-32 w-96 h-96 bg-cyan-500/10 dark:bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
-                
+
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
                         {/* Nội dung bên trái */}
