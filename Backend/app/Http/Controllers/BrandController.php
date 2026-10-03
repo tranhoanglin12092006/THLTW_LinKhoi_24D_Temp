@@ -16,20 +16,24 @@ class BrandController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        // Lấy số thương hiệu hiển thị trên mỗi trang.
-        // Mặc định là 10, nhỏ nhất là 1 và lớn nhất là 100.
-        $perPage = max(
-            1,
-            min((int) $request->input('per_page', 10), 100)
-        );
+        // Số thương hiệu mỗi trang (mặc định 10)
+        $perPage = max(1, min((int) $request->input('per_page', 10), 100));
 
-        // Chỉ lấy các thương hiệu đang hoạt động.
-        // Sắp xếp theo ID tăng dần và chia thành nhiều trang.
-        $brands = Brand::active()
-            ->orderBy('id', 'asc')
-            ->paginate($perPage);
+        $query = Brand::orderBy('id', 'desc');
 
-        // Chuyển danh sách thương hiệu thành dữ liệu JSON thông qua BrandResource.
+        // Nếu chỉ lấy thương hiệu đang hoạt động
+        if ($request->boolean('active_only')) {
+            $query->active();
+        }
+
+        // Nếu muốn tìm kiếm theo tên thương hiệu
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('ten', 'like', "%{$search}%");
+        }
+
+        $brands = $query->paginate($perPage);
+
         return BrandResource::collection($brands);
     }
 

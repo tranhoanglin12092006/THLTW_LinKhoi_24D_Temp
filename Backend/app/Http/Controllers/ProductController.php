@@ -115,4 +115,61 @@ class ProductController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Lấy danh sách sản phẩm mới nhất
+     * GET /api/newProducts/{limit}
+     */
+    public function getNewProducts($limit = 8)
+    {
+        $limit = (int) $limit;
+
+        $products = Product::where('trang_thai', 1)
+            ->with(['danhMuc', 'thuongHieu'])
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->take($limit)
+            ->get();
+
+        return ProductResource::collection($products);
+    }
+
+    /**
+     * Lấy danh sách sản phẩm nổi bật / bán chạy (HOT)
+     * GET /api/hotProducts/{limit}
+     */
+    public function getHotProducts($limit = 8)
+    {
+        $limit = (int) $limit;
+
+        // Ưu tiên sản phẩm có tồn kho nhiều hoặc sắp xếp mới nhất
+        $products = Product::where('trang_thai', 1)
+            ->with(['danhMuc', 'thuongHieu'])
+            ->orderBy('so_luong_ton', 'desc')
+            ->orderBy('id', 'desc')
+            ->take($limit)
+            ->get();
+
+        return ProductResource::collection($products);
+    }
+
+    /**
+     * Lấy danh sách sản phẩm đang giảm giá (SALE)
+     * GET /api/saleProducts/{limit}
+     */
+    public function getSaleProducts($limit = 8)
+    {
+        $limit = (int) $limit;
+
+        $products = Product::where('trang_thai', 1)
+            ->whereNotNull('gia_khuyen_mai')
+            ->where('gia_khuyen_mai', '>', 0)
+            ->whereColumn('gia_khuyen_mai', '<', 'gia')
+            ->with(['danhMuc', 'thuongHieu'])
+            ->orderBy('id', 'desc')
+            ->take($limit)
+            ->get();
+
+        return ProductResource::collection($products);
+    }
 }

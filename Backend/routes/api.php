@@ -43,6 +43,27 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
 
+// ==================== API DANH MỤC (CRUD) ====================
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::post('/categories', [CategoryController::class, 'store']);
+Route::get('/categories/{id}', [CategoryController::class, 'show']);
+Route::put('/categories/{id}', [CategoryController::class, 'update']);
+Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+// ==================== API THƯƠNG HIỆU (CRUD) ====================
+Route::get('/brands', [BrandController::class, 'index']);
+Route::post('/brands', [BrandController::class, 'store']);
+Route::get('/brands/{id}', [BrandController::class, 'show']);
+Route::put('/brands/{id}', [BrandController::class, 'update']);
+Route::delete('/brands/{id}', [BrandController::class, 'destroy']);
+
+// ==================== API SẢN PHẨM (PUBLIC CHO SHOP) ====================
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::get('/newProducts/{limit?}', [ProductController::class, 'getNewProducts']);
+Route::get('/hotProducts/{limit?}', [ProductController::class, 'getHotProducts']);
+Route::get('/saleProducts/{limit?}', [ProductController::class, 'getSaleProducts']);
+
 
 
 // Route::apiResource('categories', AdminCategoryController::class);

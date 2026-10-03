@@ -19,18 +19,25 @@ class ProductResource extends JsonResource
             'thuong_hieu_id' => $this->thuong_hieu_id,
 
             'ten' => $this->ten,
+            'product_name' => $this->ten,
             'duong_dan' => $this->duong_dan,
+            'slug' => $this->duong_dan,  
 
             'gia' => $this->gia,
+            'price' => $this->gia,     
             'gia_khuyen_mai' => $this->gia_khuyen_mai,
+            'sale_price' => $this->gia_khuyen_mai, 
 
             'so_luong_ton' => $this->so_luong_ton,
+            'qty' => $this->so_luong_ton,
 
             'mo_ta' => $this->mo_ta,
             'hinh_anh' => $this->hinh_anh,
+            'image' => $this->hinh_anh,
             'hinh_anh_url' => $this->hinh_anh_url,
 
             'trang_thai' => $this->trang_thai,
+            'status' => $this->trang_thai,
 
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
