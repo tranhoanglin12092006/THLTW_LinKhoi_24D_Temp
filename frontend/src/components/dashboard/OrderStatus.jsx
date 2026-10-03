@@ -3,20 +3,22 @@
 export default function OrderStatus() {
     return (
         // Card chứa toàn bộ phần thống kê đơn hàng
-        <div className="dashboard-card order-status-card">
+        <div className="rounded-2xl border border-white/[0.06] bg-[#111328]/80 backdrop-blur-sm p-6 min-h-[330px]">
 
             {/* =========================
                 PHẦN TIÊU ĐỀ
             ========================= */}
-            <div className="card-title">
+            <div className="flex items-center justify-between mb-5">
 
                 <div>
 
                     {/* Tên phần thống kê */}
-                    <h3>Đơn hàng</h3>
+                    <h3 className="m-0 text-[15px] font-semibold text-white">
+                        Đơn hàng
+                    </h3>
 
                     {/* Mô tả ngắn */}
-                    <p>
+                    <p className="mt-1.5 text-[11px] text-slate-500">
                         Trạng thái đơn hàng
                     </p>
 
@@ -28,19 +30,23 @@ export default function OrderStatus() {
             {/* =========================
                 VÒNG TRÒN THỐNG KÊ
             ========================= */}
-            <div className="status-chart">
+            <div className="flex justify-center my-5">
 
                 {/* 
                     Vòng tròn hiển thị tổng số đơn hàng.
                     Hiện tại số 128 là dữ liệu mẫu.
                 */}
-                <div className="status-circle">
+                <div className="w-[130px] h-[130px] rounded-full flex flex-col items-center justify-center border-[10px] border-indigo-900/80 shadow-xl shadow-indigo-500/10 bg-[#16182b]">
 
                     {/* Tổng số đơn hàng */}
-                    <strong>128</strong>
+                    <strong className="text-2xl font-bold text-white">
+                        128
+                    </strong>
 
                     {/* Nội dung mô tả */}
-                    <span>Tổng đơn</span>
+                    <span className="mt-1 text-[10px] text-slate-500">
+                        Tổng đơn
+                    </span>
 
                 </div>
 
@@ -50,28 +56,21 @@ export default function OrderStatus() {
             {/* =========================
                 DANH SÁCH TRẠNG THÁI
             ========================= */}
-            <div className="status-list">
+            <div className="flex flex-col gap-3.5 mt-6">
 
 
                 {/* =========================
                     ĐƠN HÀNG CHỜ XỬ LÝ
                 ========================= */}
-                <div className="status-item">
+                <div className="grid grid-cols-[10px_1fr_auto] items-center gap-3 text-[12px] text-slate-400 hover:text-slate-300 transition-colors">
 
-                    {/* 
-                        Chấm màu đại diện cho trạng thái.
-                        Không dùng icon để giao diện gọn hơn.
-                    */}
-                    <span className="status-dot pending">
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/40" />
 
                     {/* Tên trạng thái */}
-                    <span>
-                        Chờ xử lý
-                    </span>
+                    <span>Chờ xử lý</span>
 
                     {/* Số lượng đơn */}
-                    <strong>
+                    <strong className="text-white font-semibold">
                         24
                     </strong>
 
@@ -81,16 +80,13 @@ export default function OrderStatus() {
                 {/* =========================
                     ĐƠN HÀNG ĐANG XỬ LÝ
                 ========================= */}
-                <div className="status-item">
+                <div className="grid grid-cols-[10px_1fr_auto] items-center gap-3 text-[12px] text-slate-400 hover:text-slate-300 transition-colors">
 
-                    <span className="status-dot processing">
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/40" />
 
-                    <span>
-                        Đang xử lý
-                    </span>
+                    <span>Đang xử lý</span>
 
-                    <strong>
+                    <strong className="text-white font-semibold">
                         31
                     </strong>
 
@@ -100,16 +96,13 @@ export default function OrderStatus() {
                 {/* =========================
                     ĐƠN HÀNG HOÀN THÀNH
                 ========================= */}
-                <div className="status-item">
+                <div className="grid grid-cols-[10px_1fr_auto] items-center gap-3 text-[12px] text-slate-400 hover:text-slate-300 transition-colors">
 
-                    <span className="status-dot completed">
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40" />
 
-                    <span>
-                        Hoàn thành
-                    </span>
+                    <span>Hoàn thành</span>
 
-                    <strong>
+                    <strong className="text-white font-semibold">
                         62
                     </strong>
 
@@ -119,16 +112,13 @@ export default function OrderStatus() {
                 {/* =========================
                     ĐƠN HÀNG ĐÃ HỦY
                 ========================= */}
-                <div className="status-item">
+                <div className="grid grid-cols-[10px_1fr_auto] items-center gap-3 text-[12px] text-slate-400 hover:text-slate-300 transition-colors">
 
-                    <span className="status-dot cancelled">
-                    </span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/40" />
 
-                    <span>
-                        Đã hủy
-                    </span>
+                    <span>Đã hủy</span>
 
-                    <strong>
+                    <strong className="text-white font-semibold">
                         11
                     </strong>
 
