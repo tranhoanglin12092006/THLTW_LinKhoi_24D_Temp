@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import OrderTable from "@/components/dashboard/orders/OrderTable";
 import OrderModal from "@/components/dashboard/orders/OrderModal";
 import OrderDetailModal from "@/components/dashboard/orders/OrderDetailModal";
+import Pagination from "@/components/common/Pagination";
 
 import {
     getAllOrders,
@@ -34,6 +35,11 @@ export default function OrdersPage() {
 
     // Từ khóa tìm kiếm
     const [search, setSearch] = useState("");
+
+    // Phân trang
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const pageSize = 10;
 
     // Thông báo
     const [message, setMessage] = useState("");
@@ -236,6 +242,23 @@ export default function OrdersPage() {
         );
     });
 
+    // Tính số trang
+    const totalItems = filteredOrders.length;
+
+    const totalPages = Math.ceil(
+        totalItems / pageSize
+    );
+
+    // Lấy đơn hàng của trang hiện tại
+    const startIndex =
+        (currentPage - 1) * pageSize;
+
+    const currentOrders = filteredOrders.slice(
+        startIndex,
+        startIndex + pageSize
+    );
+
+
     return (
         <div className="space-y-6">
             {/* Tiêu đề + tìm kiếm + nút thêm */}
@@ -259,6 +282,7 @@ export default function OrdersPage() {
                         value={search}
                         onChange={(e) => {
                             setSearch(e.target.value);
+                            setCurrentPage(1);
                         }}
                         className="w-56 rounded-xl border border-white/[0.08] bg-[#151728] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 transition-colors focus:border-violet-500 focus:outline-none sm:w-64"
                     />
@@ -282,8 +306,8 @@ export default function OrdersPage() {
             {message && (
                 <div
                     className={`fixed right-6 top-6 z-[100] flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur-sm ${messageType === "error"
-                            ? "border-rose-500/20 bg-[#1a1220] text-rose-400"
-                            : "border-emerald-500/20 bg-[#101c1a] text-emerald-400"
+                        ? "border-rose-500/20 bg-[#1a1220] text-rose-400"
+                        : "border-emerald-500/20 bg-[#101c1a] text-emerald-400"
                         }`}
                 >
                     <span className="text-base">
@@ -305,12 +329,25 @@ export default function OrdersPage() {
 
             {/* Bảng đơn hàng */}
             <OrderTable
-                orders={filteredOrders}
+                orders={currentOrders}
                 loading={loading}
                 onView={handleView}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
             />
+
+            {/* Phân trang */}
+            {totalPages > 0 && (
+                <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111328]/80 shadow-xl backdrop-blur-sm">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
+            )}
 
             {/* Modal thêm / sửa */}
             <OrderModal
