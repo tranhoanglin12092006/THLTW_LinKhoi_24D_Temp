@@ -14,7 +14,7 @@ class OrderController extends Controller
     {
         // Lấy thêm các chi tiết đơn hàng
         $orders = Order::with('chiTietDonHangs')
-            ->orderBy('id')
+            ->orderBy('id', 'desc')
             ->get();
 
         return OrderResource::collection($orders);
@@ -24,14 +24,27 @@ class OrderController extends Controller
     public function store(OrderRequest $request): JsonResponse|OrderResource
     {
         try {
-            // Lấy dữ liệu đã kiểm tra
+            // Lấy dữ liệu từ form
             $data = $request->validated();
 
-            // Tạo đơn hàng
-            $order = Order::create($data);
+            // Tạo đơn hàng trước
+            $order = Order::create([
+                ...$data,
+                'ma_don_hang' => 'TEMP',
+            ]);
 
-            // Lấy thêm chi tiết đơn hàng
-            $order->load('chiTietDonHangs');
+            // Dùng ID của đơn hàng để tạo mã
+            $order->update([
+                'ma_don_hang' => 'DH' . str_pad(
+                    $order->id,
+                    6,
+                    '0',
+                    STR_PAD_LEFT
+                ),
+            ]);
+
+            // Load dữ liệu chi tiết
+            $order->load('chiTietDonHangs.sanPham');
 
             return response()->json([
                 'message' => 'Thêm đơn hàng thành công.',
@@ -59,17 +72,20 @@ class OrderController extends Controller
     public function update(OrderRequest $request, $id): JsonResponse|OrderResource
     {
         try {
-            // Tìm đơn hàng
             $order = Order::findOrFail($id);
 
-            // Lấy dữ liệu đã kiểm tra
+            // Đơn đã hủy thì không được cập nhật
+            if ((int) $order->trang_thai === 4) {
+                return response()->json([
+                    'message' => 'Đơn hàng đã hủy, không thể cập nhật.'
+                ], 422);
+            }
+
             $data = $request->validated();
 
-            // Cập nhật đơn hàng
             $order->update($data);
 
-            // Lấy thêm chi tiết đơn hàng
-            $order->load('chiTietDonHangs');
+            $order->load('chiTietDonHangs.sanPham');
 
             return response()->json([
                 'message' => 'Cập nhật đơn hàng thành công.',
