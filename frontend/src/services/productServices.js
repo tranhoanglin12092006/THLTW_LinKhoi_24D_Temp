@@ -10,7 +10,10 @@ import axiosClient from "@/lib/axiosClient";
 // 1. Lấy tất cả sản phẩm
 export async function getAllProducts() {
     try {
-        const res = await axiosClient.get("/products");
+        // Lấy tối đa 1000 sản phẩm thay vì chỉ 10
+        const res = await axiosClient.get("/products", {
+            params: { per_page: 1000 },
+        });
         return res.data ? res.data : res;
     } catch (error) {
         console.error("Lỗi lấy danh sách sản phẩm:", error);
@@ -59,5 +62,38 @@ export async function getProductDetail(idOrSlug) {
     } catch (error) {
         console.error("Lỗi lấy chi tiết sản phẩm:", error);
         return null;
+    }
+}
+
+// 6. Thêm sản phẩm mới
+export async function createProduct(data) {
+    try {
+        const res = await axiosClient.post("/products", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi thêm sản phẩm:", error);
+        throw error;
+    }
+}
+
+// 7. Cập nhật sản phẩm
+export async function updateProduct(id, data) {
+    try {
+        const res = await axiosClient.post(`/products/${id}?_method=PUT`, data);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi cập nhật sản phẩm ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// 8. Xóa sản phẩm
+export async function deleteProduct(id) {
+    try {
+        const res = await axiosClient.delete(`/products/${id}`);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi xóa sản phẩm ID ${id}:`, error);
+        throw error;
     }
 }

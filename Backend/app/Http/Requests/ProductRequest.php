@@ -57,8 +57,9 @@ class ProductRequest extends FormRequest
             // Mô tả không bắt buộc, nếu nhập phải là chuỗi.
             'mo_ta' => 'nullable|string',
 
-            // Hình ảnh không bắt buộc, nếu nhập phải là chuỗi.
-            'hinh_anh' => 'nullable|string',
+            // Ảnh: không bắt buộc, nhưng nếu có thì phải là ảnh
+            // jpg/jpeg/png/webp và tối đa 2MB (2048 KB)
+            'hinh_anh' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
 
             // Trạng thái bắt buộc và phải có giá trị boolean.
             'trang_thai' => 'required|boolean',
@@ -99,7 +100,10 @@ class ProductRequest extends FormRequest
 
             'mo_ta.string' => 'Mô tả phải là chuỗi.',
 
-            'hinh_anh.string' => 'Hình ảnh phải là chuỗi.',
+            'hinh_anh.image' => 'File phải là hình ảnh.',
+            'hinh_anh.mimes' => 'Ảnh chỉ chấp nhận JPG, JPEG, PNG, WEBP.',
+            'hinh_anh.max'   => 'Hình ảnh không được vượt quá 2MB.',
+
 
             'trang_thai.required' => 'Vui lòng nhập trạng thái.',
             'trang_thai.boolean' => 'Trạng thái không hợp lệ.',
