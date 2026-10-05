@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('hinh_anh')->nullable();
             $table->boolean('trang_thai')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

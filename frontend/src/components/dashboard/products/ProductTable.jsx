@@ -9,6 +9,9 @@ export default function ProductTable({
     loading,
     onEdit,
     onDelete,
+    onRestore,
+    onForceDelete,
+    showTrash,
 }) {
     // Lấy tên danh mục
     const getCategoryName = (id) => {
@@ -182,27 +185,49 @@ export default function ProductTable({
                                     {/* Thao tác */}
                                     <td className="px-4 py-3.5 text-right">
                                         <div className="inline-flex items-center gap-2">
-                                            {/* Nút sửa */}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    onEdit(product)
-                                                }
-                                                className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[11px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/20 hover:text-blue-300"
-                                            >
-                                                Sửa
-                                            </button>
+                                            {!showTrash && (
+                                                <>
+                                                    {/* Nút sửa */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onEdit(product)}
+                                                        className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[11px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/20 hover:text-blue-300"
+                                                    >
+                                                        Sửa
+                                                    </button>
 
-                                            {/* Nút xóa */}
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    onDelete(product.id)
-                                                }
-                                                className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
-                                            >
-                                                Xóa
-                                            </button>
+                                                    {/* Nút xóa */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onDelete(product.id)}
+                                                        className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                                                    >
+                                                        Xóa
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            {showTrash && (
+                                                <>
+                                                    {/* Nút khôi phục sản phẩm */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onRestore(product.id)}
+                                                        className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/20 hover:text-emerald-300"
+                                                    >
+                                                        Khôi phục
+                                                    </button>
+
+                                                    {/* Nút xóa vĩnh viễn sản phẩm */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onForceDelete(product.id)}
+                                                        className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
+                                                    >
+                                                        Xóa vĩnh viễn
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

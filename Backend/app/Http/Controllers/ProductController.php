@@ -21,7 +21,7 @@ class ProductController extends Controller
 
         $products = Product::where('trang_thai', 1)
             ->with(['danhMuc', 'thuongHieu'])
-            ->orderBy('id')
+            ->orderBy('id', 'desc')
             ->paginate($perPage);
 
         return ProductResource::collection($products);
@@ -115,8 +115,9 @@ class ProductController extends Controller
             ], 500);
         }
     }
+
     /**
-     * Xóa sản phẩm.
+     * Xóa mềm sản phẩm.
      * DELETE /api/products/{id}
      */
     public function destroy($id)
@@ -124,11 +125,8 @@ class ProductController extends Controller
         try {
             $product = Product::findOrFail($id);
 
-            // Xóa file ảnh trước, rồi mới xóa sản phẩm
-            if ($product->hinh_anh) {
-                Storage::disk('public')->delete($product->hinh_anh);
-            }
-
+            // Xóa mềm sản phẩm.
+            // Dữ liệu vẫn còn trong database và chỉ cập nhật deleted_at.
             $product->delete();
 
             return response()->json([
@@ -137,6 +135,75 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Xóa sản phẩm thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Lấy danh sách sản phẩm đã xóa mềm.
+     * GET /api/products/trash
+     */
+    public function trash(): AnonymousResourceCollection
+    {
+        $perPage = request()->get('per_page', 10);
+
+        $products = Product::onlyTrashed()
+            ->with(['danhMuc', 'thuongHieu'])
+            ->orderBy('deleted_at', 'desc')
+            ->paginate($perPage);
+
+        return ProductResource::collection($products);
+    }
+
+    /**
+     * Khôi phục sản phẩm đã xóa mềm.
+     * POST /api/products/{id}/restore
+     */
+    public function restore($id)
+    {
+        try {
+            // Tìm sản phẩm kể cả khi sản phẩm đã bị xóa mềm.
+            $product = Product::withTrashed()->findOrFail($id);
+
+            // Khôi phục sản phẩm, đưa deleted_at về null.
+            $product->restore();
+
+            return response()->json([
+                'message' => 'Khôi phục sản phẩm thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Khôi phục sản phẩm thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Xóa vĩnh viễn sản phẩm đã xóa mềm.
+     * DELETE /api/products/{id}/force
+     */
+    public function forceDestroy($id)
+    {
+        try {
+            // Tìm sản phẩm kể cả khi đã bị xóa mềm.
+            $product = Product::withTrashed()->findOrFail($id);
+
+            // Xóa hình ảnh khỏi storage nếu sản phẩm có ảnh.
+            if ($product->hinh_anh) {
+                Storage::disk('public')->delete($product->hinh_anh);
+            }
+
+            // Xóa vĩnh viễn sản phẩm khỏi database.
+            $product->forceDelete();
+
+            return response()->json([
+                'message' => 'Xóa vĩnh viễn sản phẩm thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Xóa vĩnh viễn sản phẩm thất bại',
                 'error' => $e->getMessage()
             ], 500);
         }

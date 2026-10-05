@@ -35,6 +35,9 @@ Route::get('/user', function (Request $request) {
         // API sản phẩm
         Route::get('/products', [ProductController::class, 'index']);
         Route::post('/products', [ProductController::class, 'store']);
+        Route::get('/products/trash', [ProductController::class, 'trash']);
+        Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
+        Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']);
         Route::get('/products/{id}', [ProductController::class, 'show']);
         Route::put('/products/{id}', [ProductController::class, 'update']);
         Route::delete('/products/{id}', [ProductController::class, 'destroy']);

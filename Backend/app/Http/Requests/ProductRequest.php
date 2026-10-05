@@ -47,9 +47,7 @@ class ProductRequest extends FormRequest
             // Giá sản phẩm bắt buộc nhập, phải là số và không được nhỏ hơn 0.
             'gia' => 'required|numeric|min:0',
 
-            // Giá khuyến mãi không bắt buộc.
-            // Nếu nhập thì phải là số và không được nhỏ hơn 0.
-            'gia_khuyen_mai' => 'nullable|numeric|min:0',
+            'gia_khuyen_mai' => 'nullable|numeric|min:0|lte:gia',
 
             // Số lượng tồn bắt buộc là số nguyên và không được nhỏ hơn 0.
             'so_luong_ton' => 'required|integer|min:0',

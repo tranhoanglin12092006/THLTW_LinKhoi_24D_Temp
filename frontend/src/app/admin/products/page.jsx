@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 
 import {
     getAllProducts,
+    getDeletedProducts,
     createProduct,
     updateProduct,
     deleteProduct,
+    restoreProduct,
+    forceDeleteProduct,
 } from "@/services/productServices";
 
 import { getAllCategories } from "@/services/categoryServices";
@@ -18,6 +21,7 @@ import ProductModal from "@/components/dashboard/products/ProductModal";
 
 export default function ProductsPage() {
     const [products, setProducts] = useState([]);
+    const [showTrash, setShowTrash] = useState(false);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
 
@@ -46,6 +50,26 @@ export default function ProductsPage() {
         } catch (error) {
             console.error(error);
             alert("Không thể lấy danh sách sản phẩm!");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Lấy danh sách sản phẩm đã xóa mềm
+    const loadDeletedProducts = async () => {
+        setLoading(true);
+
+        try {
+            const res = await getDeletedProducts();
+
+            const data = Array.isArray(res)
+                ? res
+                : res?.data || [];
+
+            setProducts(data);
+        } catch (error) {
+            console.error(error);
+            alert("Không thể lấy danh sách sản phẩm trong thùng rác!");
         } finally {
             setLoading(false);
         }
@@ -147,6 +171,52 @@ export default function ProductsPage() {
         }
     };
 
+    const handleRestore = async (id) => {
+        if (!confirm("Bạn có chắc muốn khôi phục sản phẩm này?")) return;
+
+        try {
+            await restoreProduct(id);
+
+            alert("✓ Khôi phục sản phẩm thành công!");
+
+            // Tải lại danh sách trong thùng rác.
+            await loadDeletedProducts();
+        } catch (error) {
+            console.error(error);
+
+            alert(
+                error?.response?.data?.message ||
+                "Khôi phục sản phẩm thất bại!"
+            );
+        }
+    };
+
+    const handleForceDelete = async (id) => {
+        if (
+            !confirm(
+                "Bạn có chắc muốn xóa vĩnh viễn sản phẩm này?\n\nSản phẩm và hình ảnh sẽ bị xóa hoàn toàn và không thể khôi phục!"
+            )
+        ) {
+            return;
+        }
+
+        try {
+            await forceDeleteProduct(id);
+
+            alert("✓ Xóa vĩnh viễn sản phẩm thành công!");
+
+            // Tải lại danh sách trong thùng rác.
+            await loadDeletedProducts();
+        } catch (error) {
+            console.error(error);
+
+            alert(
+                error?.response?.data?.message ||
+                "Xóa vĩnh viễn sản phẩm thất bại!"
+            );
+        }
+    };
+
     // Tìm kiếm sản phẩm
     const filteredProducts = products.filter((product) =>
         product.ten
@@ -170,19 +240,36 @@ export default function ProductsPage() {
         startIndex + pageSize
     );
 
+    // Chuyển giữa danh sách sản phẩm và thùng rác
+    const handleToggleTrash = async () => {
+        const nextShowTrash = !showTrash;
+
+        setShowTrash(nextShowTrash);
+        setSearch("");
+        setCurrentPage(1);
+
+        if (nextShowTrash) {
+            await loadDeletedProducts();
+        } else {
+            await loadProducts();
+        }
+    };
+
     return (
-        
+
         <div className="space-y-6">
             {/* Tiêu đề + tìm kiếm + nút thêm */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 {/* Tiêu đề */}
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white">
-                        Quản lý sản phẩm
+                        {showTrash ? "Thùng rác sản phẩm" : "Quản lý sản phẩm"}
                     </h1>
 
                     <p className="mt-1 text-xs text-slate-400">
-                        Quản lý danh sách sản phẩm trong hệ thống
+                        {showTrash
+                            ? "Danh sách các sản phẩm đã xóa"
+                            : "Quản lý danh sách sản phẩm trong hệ thống"}
                     </p>
                 </div>
 
@@ -190,7 +277,11 @@ export default function ProductsPage() {
                 <div className="flex items-center gap-3">
                     <input
                         type="text"
-                        placeholder="Tìm kiếm sản phẩm..."
+                        placeholder={
+                            showTrash
+                                ? "Tìm sản phẩm đã xóa..."
+                                : "Tìm kiếm sản phẩm..."
+                        }
                         value={search}
                         onChange={(e) => {
                             setSearch(e.target.value);
@@ -201,15 +292,25 @@ export default function ProductsPage() {
 
                     <button
                         type="button"
-                        onClick={handleAdd}
-                        className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-600/20 transition-colors hover:bg-violet-500"
+                        onClick={handleToggleTrash}
+                        className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-white/[0.08] bg-[#151728] px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-[#1c1f35]"
                     >
-                        <span className="text-base leading-none">
-                            +
-                        </span>
-
-                        Thêm sản phẩm
+                        {showTrash ? "← Sản phẩm" : "🗑️ Thùng rác"}
                     </button>
+
+                    {!showTrash && (
+                        <button
+                            type="button"
+                            onClick={handleAdd}
+                            className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-600/20 transition-colors hover:bg-violet-500"
+                        >
+                            <span className="text-base leading-none">
+                                +
+                            </span>
+
+                            Thêm sản phẩm
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -223,6 +324,9 @@ export default function ProductsPage() {
                 loading={loading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onRestore={handleRestore}
+                onForceDelete={handleForceDelete}
+                showTrash={showTrash}
             />
 
             {/* Phân trang */}
