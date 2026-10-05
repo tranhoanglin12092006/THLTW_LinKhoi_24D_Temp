@@ -128,8 +128,34 @@ export default function ProductCard({ product, type }) {
                     <button
                         type="button"
                         className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-blue-600 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 shadow-sm"
-                        onClick={() => {
-                            alert(`Đã thêm "${name}" vào giỏ hàng!`);
+                        onClick={(e) => {
+                            e.preventDefault();
+                            try {
+                                const stored = localStorage.getItem("technova_cart");
+                                let cart = stored ? JSON.parse(stored) : [];
+                                const existingIndex = cart.findIndex((item) => String(item.id) === String(id));
+                                const itemPrice = hasDiscount ? salePrice : price;
+
+                                if (existingIndex > -1) {
+                                    cart[existingIndex].quantity = (cart[existingIndex].quantity || 1) + 1;
+                                } else {
+                                    cart.push({
+                                        id,
+                                        name,
+                                        slug,
+                                        price: itemPrice,
+                                        originalPrice: price,
+                                        imageUrl,
+                                        quantity: 1,
+                                        selected: true,
+                                    });
+                                }
+                                localStorage.setItem("technova_cart", JSON.stringify(cart));
+                                window.dispatchEvent(new Event("cartUpdated"));
+                                alert(`✓ Đã thêm "${name}" vào giỏ hàng!`);
+                            } catch (err) {
+                                console.error("Lỗi thêm vào giỏ hàng:", err);
+                            }
                         }}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
