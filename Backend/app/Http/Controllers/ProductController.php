@@ -17,12 +17,22 @@ class ProductController extends Controller
     public function index(): AnonymousResourceCollection
     {
         // Số sản phẩm hiển thị trên mỗi trang.
-        $perPage = request()->get('per_page', 10);
+        $perPage = max(1, min((int) request()->get('per_page', 10), 1000));
 
-        $products = Product::where('trang_thai', 1)
-            ->with(['danhMuc', 'thuongHieu'])
-            ->orderBy('id', 'desc')
-            ->paginate($perPage);
+        $query = Product::with(['danhMuc', 'thuongHieu'])->orderBy('id', 'desc');
+
+        // Nếu có yêu cầu chỉ lấy sản phẩm đang hoạt động (ví dụ trang shop công khai)
+        if (request()->boolean('active_only')) {
+            $query->where('trang_thai', 1);
+        }
+
+        // Hỗ trợ tìm kiếm theo tên nếu có
+        if (request()->filled('search')) {
+            $search = request()->input('search');
+            $query->where('ten', 'like', "%{$search}%");
+        }
+
+        $products = $query->paginate($perPage);
 
         return ProductResource::collection($products);
     }
