@@ -1,8 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
 
+import Link from "next/link";
 
 export default function Header() {
+    const [cartCount, setCartCount] = useState(0);
+
+    useEffect(() => {
+        const updateCount = () => {
+            try {
+                const stored = localStorage.getItem("technova_cart");
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        const total = parsed.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                        setCartCount(total);
+                        return;
+                    }
+                }
+                setCartCount(0);
+            } catch (e) {
+                setCartCount(0);
+            }
+        };
+
+        updateCount();
+        window.addEventListener("cartUpdated", updateCount);
+        window.addEventListener("storage", updateCount);
+        return () => {
+            window.removeEventListener("cartUpdated", updateCount);
+            window.removeEventListener("storage", updateCount);
+        };
+    }, []);
+
     return (
         <>
             {/* TOP BAR */}
@@ -122,7 +153,7 @@ export default function Header() {
                             {/* Account */}
                             <div className="relative group">
                                 <a
-                                    href="profile.html"
+                                    href="/profile"
                                     className="p-2 sm:px-3 sm:py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
                                     title="Tài khoản"
                                 >
@@ -138,7 +169,7 @@ export default function Header() {
                                 <div className="absolute right-0 top-full pt-2 w-52 hidden group-hover:block z-50">
                                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 text-xs">
                                         <a
-                                            href="profile.html"
+                                            href="/profile"
                                             className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
                                         >
                                             <i
@@ -180,14 +211,14 @@ export default function Header() {
                             </div>
                             {/* Cart */}
                             <a
-                                href="cart.html"
+                                href="/cart"
                                 className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 relative"
                                 title="Giỏ hàng"
                             >
                                 <i data-lucide="shopping-cart" className="w-5 h-5" />
                                 <span className="hidden sm:inline text-xs font-bold">Giỏ hàng</span>
                                 <span className="cart-count-badge bg-rose-500 text-white text-[11px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                                    0
+                                    {cartCount}
                                 </span>
                             </a>
                         </div>
