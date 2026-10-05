@@ -7,6 +7,8 @@ import {
     createCategory,
     updateCategory,
     deleteCategory,
+    restoreCategory,
+    forceDeleteCategory,
 } from "@/services/categoryServices";
 import Pagination from "@/components/common/Pagination";
 
@@ -24,19 +26,36 @@ function createSlug(text) {
         .replace(/^-+|-+$/g, "");
 }
 
+// Hàm định dạng ngày giờ hiển thị
+function formatDate(dateString) {
+    if (!dateString) return "—";
+    const date = new Date(dateString);
+    return date.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
 export default function AdminCategoriesPage() {
-    // 1. Quản lý trạng thái danh sách danh mục
+    // 1. Quản lý tab danh sách: "active" (Đang hoạt động) hoặc "trash" (Thùng rác)
+    const [tab, setTab] = useState("active");
+    const [trashCount, setTrashCount] = useState(0);
+
+    // 2. Quản lý trạng thái danh sách danh mục
     const [categories, setCategories] = useState([]);
     const [allParentCategories, setAllParentCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // 2. Phân trang 10 mục / trang
+    // 3. Phân trang 10 mục / trang
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
     const [search, setSearch] = useState("");
 
-    // 3. Quản lý Modal Thêm / Sửa
+    // 4. Quản lý Modal Thêm / Sửa
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null); // null = Thêm mới, object = Sửa
 
@@ -50,14 +69,13 @@ export default function AdminCategoriesPage() {
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState("");
 
-    // Tải danh sách danh mục (phân trang 10 mục / trang)
+    // Tải danh sách danh mục (phân trang 10 mục / trang, hỗ trợ tab thùng rác)
     const loadCategories = async () => {
         try {
             setLoading(true);
-            const res = await getCategories(page, 10, search);
+            const isTrashTab = tab === "trash";
+            const res = await getCategories(page, 10, search, isTrashTab);
 
-            // Laravel Resource phân trang trả về: { data: [...], meta: { current_page, last_page, total } }
-            // hoặc { data: [...], current_page, last_page, total }
             const items = res.data || res;
             setCategories(Array.isArray(items) ? items : []);
 
@@ -70,6 +88,11 @@ export default function AdminCategoriesPage() {
             } else {
                 setTotalPages(1);
                 setTotalItems(Array.isArray(items) ? items.length : 0);
+            }
+
+            // Cập nhật số lượng trong thùng rác
+            if (res.trash_count !== undefined) {
+                setTrashCount(res.trash_count);
             }
         } catch (error) {
             console.error("Lỗi khi tải danh mục:", error);
@@ -90,7 +113,7 @@ export default function AdminCategoriesPage() {
 
     useEffect(() => {
         loadCategories();
-    }, [page, search]);
+    }, [page, search, tab]);
 
     useEffect(() => {
         loadParentCategories();
@@ -134,7 +157,7 @@ export default function AdminCategoriesPage() {
 
     // Lưu Form (Thêm hoặc Sửa)
     const handleSave = async (e) => {
-        e.preventDefault(); //dùng để ngăn hành động mặc định của trình duyệt.
+        e.preventDefault();
         setFormError("");
 
         if (!formData.ten.trim()) {
@@ -157,11 +180,9 @@ export default function AdminCategoriesPage() {
         try {
             setFormLoading(true);
             if (editingCategory) {
-                // Cập nhật danh mục
                 await updateCategory(editingCategory.id, payload);
                 alert("✓ Cập nhật danh mục thành công!");
             } else {
-                // Thêm danh mục mới
                 await createCategory(payload);
                 alert("✓ Thêm danh mục mới thành công!");
             }
@@ -180,18 +201,52 @@ export default function AdminCategoriesPage() {
         }
     };
 
-    // Xử lý Xóa danh mục
-    const handleDelete = async (id, name) => {
-        const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${name}" (ID: ${id})?`);
+    // Xóa mềm danh mục (chuyển vào thùng rác)
+    const handleSoftDelete = async (id, name) => {
+        const confirmDelete = window.confirm(
+            `Bạn có chắc chắn muốn chuyển danh mục "${name}" (ID: ${id}) vào thùng rác?\n(Bạn vẫn có thể khôi phục lại bất kỳ lúc nào)`
+        );
         if (!confirmDelete) return;
 
         try {
             await deleteCategory(id);
-            alert("✓ Xóa danh mục thành công!");
+            alert("✓ Đã chuyển danh mục vào thùng rác!");
             loadCategories();
             loadParentCategories();
         } catch (error) {
-            alert("❌ Xóa thất bại. Danh mục có thể đang chứa sản phẩm hoặc danh mục con.");
+            const msg = error.response?.data?.message || "❌ Không thể xóa danh mục này.";
+            alert(msg);
+        }
+    };
+
+    // Khôi phục danh mục từ thùng rác
+    const handleRestore = async (id, name) => {
+        try {
+            await restoreCategory(id);
+            alert(`✓ Đã khôi phục thành công danh mục "${name}"!`);
+            loadCategories();
+            loadParentCategories();
+        } catch (error) {
+            const msg = error.response?.data?.message || "❌ Khôi phục thất bại.";
+            alert(msg);
+        }
+    };
+
+    // Xóa vĩnh viễn danh mục khỏi CSDL
+    const handleForceDelete = async (id, name) => {
+        const confirmDelete = window.confirm(
+            `⚠️ CẢNH BÁO NGUY HIỂM:\nBạn có chắc chắn muốn XÓA VĨNH VIỄN danh mục "${name}" (ID: ${id})?\nHành động này KHÔNG THỂ HOÀN TÁC!`
+        );
+        if (!confirmDelete) return;
+
+        try {
+            await forceDeleteCategory(id);
+            alert("✓ Đã xóa vĩnh viễn danh mục!");
+            loadCategories();
+            loadParentCategories();
+        } catch (error) {
+            const msg = error.response?.data?.message || "❌ Xóa vĩnh viễn thất bại.";
+            alert(msg);
         }
     };
 
@@ -219,7 +274,7 @@ export default function AdminCategoriesPage() {
                             value={search}
                             onChange={(e) => {
                                 setSearch(e.target.value);
-                                setPage(1); // Reset về trang 1 khi tìm kiếm
+                                setPage(1);
                             }}
                             className="w-56 sm:w-64 px-3.5 py-2 pl-9 rounded-xl border border-white/[0.08] bg-[#151728] text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition-colors"
                         />
@@ -241,7 +296,56 @@ export default function AdminCategoriesPage() {
             </div>
 
             {/* =========================================================
-                2. BẢNG DANH SÁCH DANH MỤC
+                2. TABS CHUYỂN ĐỔI: TẤT CẢ VS THÙNG RÁC
+            ========================================================= */}
+            <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setTab("active");
+                        setPage(1);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        tab === "active"
+                            ? "bg-violet-600/20 text-violet-300 border border-violet-500/30 shadow-sm shadow-violet-500/10"
+                            : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                    }`}
+                >
+                    <span>📁 Danh mục hoạt động</span>
+                    {tab === "active" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-violet-500/30 text-violet-200">
+                            {totalItems}
+                        </span>
+                    )}
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => {
+                        setTab("trash");
+                        setPage(1);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        tab === "trash"
+                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/30 shadow-sm shadow-rose-500/10"
+                            : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                    }`}
+                >
+                    <span>🗑️ Thùng rác</span>
+                    {trashCount > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white animate-pulse">
+                            {trashCount}
+                        </span>
+                    ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/[0.06] text-slate-400">
+                            0
+                        </span>
+                    )}
+                </button>
+            </div>
+
+            {/* =========================================================
+                3. BẢNG DANH SÁCH DANH MỤC
             ========================================================= */}
             <div className="rounded-2xl border border-white/[0.06] bg-[#111328]/80 backdrop-blur-sm overflow-hidden shadow-xl">
                 <div className="overflow-x-auto">
@@ -252,7 +356,11 @@ export default function AdminCategoriesPage() {
                                 <th className="py-3.5 px-4">Tên danh mục</th>
                                 <th className="py-3.5 px-4">Đường dẫn (Slug)</th>
                                 <th className="py-3.5 px-4">Danh mục cha</th>
-                                <th className="py-3.5 px-4">Trạng thái</th>
+                                {tab === "active" ? (
+                                    <th className="py-3.5 px-4">Trạng thái</th>
+                                ) : (
+                                    <th className="py-3.5 px-4">Thời gian xóa</th>
+                                )}
                                 <th className="py-3.5 px-4 text-right">Thao tác</th>
                             </tr>
                         </thead>
@@ -263,18 +371,20 @@ export default function AdminCategoriesPage() {
                                     <td colSpan={6} className="py-12 text-center text-slate-500">
                                         <div className="inline-flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full bg-violet-500 animate-ping" />
-                                            Đang tải danh sách danh mục...
+                                            Đang tải dữ liệu...
                                         </div>
                                     </td>
                                 </tr>
                             ) : categories.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="py-12 text-center text-slate-500">
-                                        Không tìm thấy danh mục nào.
+                                        {tab === "trash"
+                                            ? "Thùng rác trống. Không có danh mục nào bị xóa."
+                                            : "Không tìm thấy danh mục nào."}
                                     </td>
                                 </tr>
                             ) : (
-                                categories.map((cat, idx) => {
+                                categories.map((cat) => {
                                     const parentName = cat.parent?.ten || cat.parent?.name || (cat.parent_id ? `#${cat.parent_id}` : "— Danh mục gốc —");
                                     const isRoot = !cat.parent_id;
 
@@ -288,7 +398,7 @@ export default function AdminCategoriesPage() {
                                             {/* Tên danh mục */}
                                             <td className="py-3.5 px-4 font-semibold text-white">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-violet-400" />
+                                                    <span className={`w-2 h-2 rounded-full ${tab === "trash" ? "bg-rose-400" : "bg-violet-400"}`} />
                                                     {cat.ten || cat.category_name || cat.name}
                                                 </div>
                                             </td>
@@ -305,42 +415,74 @@ export default function AdminCategoriesPage() {
                                                 </span>
                                             </td>
 
-                                            {/* Trạng thái */}
-                                            <td className="py-3.5 px-4">
-                                                {cat.trang_thai ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                                        Hoạt động
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/20">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                                                        Đang ẩn
-                                                    </span>
-                                                )}
-                                            </td>
+                                            {/* Cột theo tab: Trạng thái hoặc Ngày xóa */}
+                                            {tab === "active" ? (
+                                                <td className="py-3.5 px-4">
+                                                    {cat.trang_thai ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                                            Hoạt động
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                                                            Đang ẩn
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            ) : (
+                                                <td className="py-3.5 px-4 text-rose-300 font-mono text-[11px]">
+                                                    {formatDate(cat.deleted_at)}
+                                                </td>
+                                            )}
 
-                                            {/* Thao tác Sửa / Xóa */}
+                                            {/* Thao tác */}
                                             <td className="py-3.5 px-4 text-right">
-                                                <div className="inline-flex items-center gap-2">
-                                                    {/* Nút Sửa */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleOpenEditModal(cat)}
-                                                        className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 text-xs font-medium transition-colors"
-                                                    >
-                                                        Sửa
-                                                    </button>
+                                                {tab === "active" ? (
+                                                    <div className="inline-flex items-center gap-2">
+                                                        {/* Nút Sửa */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleOpenEditModal(cat)}
+                                                            className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 text-xs font-medium transition-colors"
+                                                        >
+                                                            Sửa
+                                                        </button>
 
-                                                    {/* Nút Xóa */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDelete(cat.id, cat.ten || cat.name)}
-                                                        className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-medium transition-colors"
-                                                    >
-                                                        Xóa
-                                                    </button>
-                                                </div>
+                                                        {/* Nút Xóa mềm (vào thùng rác) */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSoftDelete(cat.id, cat.ten || cat.name)}
+                                                            className="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-medium transition-colors inline-flex items-center gap-1"
+                                                            title="Chuyển vào thùng rác"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                            Xóa
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="inline-flex items-center gap-2">
+                                                        {/* Nút Khôi phục */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRestore(cat.id, cat.ten || cat.name)}
+                                                            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 text-xs font-medium transition-colors inline-flex items-center gap-1"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                                                            Khôi phục
+                                                        </button>
+
+                                                        {/* Nút Xóa vĩnh viễn */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleForceDelete(cat.id, cat.ten || cat.name)}
+                                                            className="px-2.5 py-1 rounded-lg bg-rose-600 text-white hover:bg-rose-500 text-xs font-medium transition-colors shadow-sm shadow-rose-600/30 inline-flex items-center gap-1"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                            Xóa vĩnh viễn
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -363,7 +505,7 @@ export default function AdminCategoriesPage() {
             </div>
 
             {/* =========================================================
-                3. MODAL THÊM / SỬA DANH MỤC
+                4. MODAL THÊM / SỬA DANH MỤC
             ========================================================= */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">

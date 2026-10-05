@@ -49,6 +49,8 @@ Route::post('/categories', [CategoryController::class, 'store']);
 Route::get('/categories/{id}', [CategoryController::class, 'show']);
 Route::put('/categories/{id}', [CategoryController::class, 'update']);
 Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+Route::put('/categories/{id}/restore', [CategoryController::class, 'restore']);
+Route::delete('/categories/{id}/force', [CategoryController::class, 'forceDelete']);
 
 // ==================== API THƯƠNG HIỆU (CRUD) ====================
 Route::get('/brands', [BrandController::class, 'index']);
@@ -56,6 +58,8 @@ Route::post('/brands', [BrandController::class, 'store']);
 Route::get('/brands/{id}', [BrandController::class, 'show']);
 Route::put('/brands/{id}', [BrandController::class, 'update']);
 Route::delete('/brands/{id}', [BrandController::class, 'destroy']);
+Route::put('/brands/{id}/restore', [BrandController::class, 'restore']);
+Route::delete('/brands/{id}/force', [BrandController::class, 'forceDelete']);
 
 // ==================== API SẢN PHẨM (PUBLIC CHO SHOP) ====================
 Route::get('/products', [ProductController::class, 'index']);
