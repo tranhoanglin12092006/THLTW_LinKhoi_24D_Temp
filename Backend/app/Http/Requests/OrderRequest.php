@@ -19,8 +19,6 @@ class OrderRequest extends FormRequest
             // ID người dùng, có thể để trống
             'nguoi_dung_id' => 'nullable|exists:nguoi_dung,id',
 
-           
-
             // Tên người nhận
             'ten_nguoi_nhan' => 'required|string|max:255',
 

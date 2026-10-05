@@ -21,6 +21,24 @@ export async function getAllProducts() {
     }
 }
 
+// Lấy danh sách sản phẩm đã xóa mềm
+export async function getDeletedProducts() {
+    try {
+        const res = await axiosClient.get("/products/trash", {
+            params: { per_page: 1000 },
+        });
+
+        return res.data ? res.data : res;
+    } catch (error) {
+        console.error(
+            "Lỗi lấy danh sách sản phẩm trong thùng rác:",
+            error
+        );
+
+        return [];
+    }
+}
+
 // 2. Lấy danh sách sản phẩm mới nhất (New Products)
 export async function getNewProducts(limit = 4) {
     try {
@@ -94,6 +112,40 @@ export async function deleteProduct(id) {
         return res;
     } catch (error) {
         console.error(`Lỗi xóa sản phẩm ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// Khôi phục sản phẩm đã xóa mềm
+export async function restoreProduct(id) {
+    try {
+        const res = await axiosClient.post(`/products/${id}/restore`);
+
+        return res;
+    } catch (error) {
+        console.error(
+            `Lỗi khôi phục sản phẩm ID ${id}:`,
+            error
+        );
+
+        throw error;
+    }
+}
+
+// Xóa vĩnh viễn sản phẩm đã xóa mềm
+export async function forceDeleteProduct(id) {
+    try {
+        const res = await axiosClient.delete(
+            `/products/${id}/force`
+        );
+
+        return res;
+    } catch (error) {
+        console.error(
+            `Lỗi xóa vĩnh viễn sản phẩm ID ${id}:`,
+            error
+        );
+
         throw error;
     }
 }
