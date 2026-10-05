@@ -11,18 +11,22 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class CategoryController extends Controller
 {
     // GET /api/categories
-    // Lấy danh sách danh mục (phân trang 10 danh mục/trang)
+    // Lấy danh sách danh mục (phân trang 10 danh mục/trang, hỗ trợ thùng rác)
     public function index(Request $request): AnonymousResourceCollection
     {
         // Số danh mục mỗi trang (mặc định 10)
         $perPage = max(1, min((int) $request->input('per_page', 10), 100));
 
-        // Khởi tạo query kèm thông tin danh mục cha
-        $query = Category::with('parent')->orderBy('id', 'desc');
+        // Kiểm tra xem có đang yêu cầu danh sách thùng rác (xóa mềm) không
+        if ($request->boolean('trashed') || $request->input('status') === 'trash') {
+            $query = Category::onlyTrashed()->with('parent')->orderBy('deleted_at', 'desc');
+        } else {
+            $query = Category::with('parent')->orderBy('id', 'desc');
 
-        // Nếu chỉ muốn lấy danh mục đang hoạt động (cho shop)
-        if ($request->boolean('active_only')) {
-            $query->active();
+            // Nếu chỉ muốn lấy danh mục đang hoạt động (cho shop)
+            if ($request->boolean('active_only')) {
+                $query->active();
+            }
         }
 
         // Nếu muốn tìm kiếm theo tên
@@ -33,7 +37,12 @@ class CategoryController extends Controller
 
         $categories = $query->paginate($perPage);
 
-        return CategoryResource::collection($categories);
+        // Đếm tổng số danh mục trong thùng rác để hiển thị badge
+        $trashCount = Category::onlyTrashed()->count();
+
+        return CategoryResource::collection($categories)->additional([
+            'trash_count' => $trashCount,
+        ]);
     }
 
     // POST /api/categories
@@ -85,24 +94,60 @@ class CategoryController extends Controller
     }
 
     // DELETE /api/categories/{id}
-    // Xóa một danh mục
+    // Xóa mềm danh mục (chuyển vào thùng rác)
     public function destroy($id)
     {
         try {
-            // Tìm danh mục cần xóa theo ID.
             $category = Category::findOrFail($id);
 
-            // Xóa danh mục khỏi database.
+            // Xóa mềm (Model sử dụng SoftDeletes sẽ tự động cập nhật cột deleted_at)
             $category->delete();
 
-            // Thông báo xóa thành công.
             return response()->json([
-                'message' => 'Xóa danh mục thành công.',
+                'message' => 'Đã chuyển danh mục vào thùng rác (xóa mềm) thành công.',
             ], 200);
         } catch (\Exception $e) {
-            // Nếu xóa bị lỗi thì trả về thông báo lỗi.
             return response()->json([
                 'message' => 'Xóa danh mục thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // PUT /api/categories/{id}/restore
+    // Khôi phục danh mục từ thùng rác
+    public function restore($id)
+    {
+        try {
+            $category = Category::onlyTrashed()->findOrFail($id);
+            $category->restore();
+
+            return response()->json([
+                'message' => 'Khôi phục danh mục thành công.',
+                'data' => new CategoryResource($category),
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Khôi phục danh mục thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // DELETE /api/categories/{id}/force
+    // Xóa vĩnh viễn danh mục khỏi hệ thống
+    public function forceDelete($id)
+    {
+        try {
+            $category = Category::withTrashed()->findOrFail($id);
+            $category->forceDelete();
+
+            return response()->json([
+                'message' => 'Đã xóa vĩnh viễn danh mục khỏi cơ sở dữ liệu.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Xóa vĩnh viễn danh mục thất bại.',
                 'error' => $e->getMessage()
             ], 500);
         }

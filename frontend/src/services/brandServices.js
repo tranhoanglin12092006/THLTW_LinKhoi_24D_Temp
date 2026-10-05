@@ -7,11 +7,12 @@ import axiosClient from "@/lib/axiosClient";
  * =========================================================================
  */
 
-// 1. Lấy danh sách thương hiệu có phân trang (mặc định 10 thương hiệu / trang)
-export async function getBrands(page = 1, perPage = 10, search = "") {
+// 1. Lấy danh sách thương hiệu có phân trang (mặc định 10 thương hiệu / trang, hỗ trợ lọc thùng rác)
+export async function getBrands(page = 1, perPage = 10, search = "", trashed = false) {
     try {
         const params = { page, per_page: perPage };
         if (search) params.search = search;
+        if (trashed) params.trashed = 1;
 
         // Gọi API: GET /api/brands?page=1&per_page=10
         const res = await axiosClient.get("/brands", { params });
@@ -68,13 +69,35 @@ export async function updateBrand(id, data) {
     }
 }
 
-// 6. Xóa thương hiệu (DELETE /api/brands/{id})
+// 6. Xóa mềm thương hiệu (DELETE /api/brands/{id})
 export async function deleteBrand(id) {
     try {
         const res = await axiosClient.delete(`/brands/${id}`);
         return res;
     } catch (error) {
         console.error(`Lỗi xóa thương hiệu ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// 7. Khôi phục thương hiệu đã xóa mềm (PUT /api/brands/{id}/restore)
+export async function restoreBrand(id) {
+    try {
+        const res = await axiosClient.put(`/brands/${id}/restore`);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi khôi phục thương hiệu ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// 8. Xóa vĩnh viễn thương hiệu (DELETE /api/brands/{id}/force)
+export async function forceDeleteBrand(id) {
+    try {
+        const res = await axiosClient.delete(`/brands/${id}/force`);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi xóa vĩnh viễn thương hiệu ID ${id}:`, error);
         throw error;
     }
 }

@@ -7,11 +7,12 @@ import axiosClient from "@/lib/axiosClient";
  * =========================================================================
  */
 
-// 1. Lấy danh sách danh mục có phân trang (mặc định 10 danh mục / trang)
-export async function getCategories(page = 1, perPage = 10, search = "") {
+// 1. Lấy danh sách danh mục có phân trang (mặc định 10 danh mục / trang, hỗ trợ lọc thùng rác)
+export async function getCategories(page = 1, perPage = 10, search = "", trashed = false) {
     try {
         const params = { page, per_page: perPage };
         if (search) params.search = search;
+        if (trashed) params.trashed = 1;
 
         // Gọi API: GET /api/categories?page=1&per_page=10
         const res = await axiosClient.get("/categories", { params });
@@ -68,13 +69,35 @@ export async function updateCategory(id, data) {
     }
 }
 
-// 6. Xóa danh mục (DELETE /api/categories/{id})
+// 6. Xóa mềm danh mục (DELETE /api/categories/{id})
 export async function deleteCategory(id) {
     try {
         const res = await axiosClient.delete(`/categories/${id}`);
         return res;
     } catch (error) {
         console.error(`Lỗi xóa danh mục ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// 7. Khôi phục danh mục đã xóa mềm (PUT /api/categories/{id}/restore)
+export async function restoreCategory(id) {
+    try {
+        const res = await axiosClient.put(`/categories/${id}/restore`);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi khôi phục danh mục ID ${id}:`, error);
+        throw error;
+    }
+}
+
+// 8. Xóa vĩnh viễn danh mục (DELETE /api/categories/{id}/force)
+export async function forceDeleteCategory(id) {
+    try {
+        const res = await axiosClient.delete(`/categories/${id}/force`);
+        return res;
+    } catch (error) {
+        console.error(`Lỗi xóa vĩnh viễn danh mục ID ${id}:`, error);
         throw error;
     }
 }

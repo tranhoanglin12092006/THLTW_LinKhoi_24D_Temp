@@ -19,11 +19,16 @@ class BrandController extends Controller
         // Số thương hiệu mỗi trang (mặc định 10)
         $perPage = max(1, min((int) $request->input('per_page', 10), 100));
 
-        $query = Brand::orderBy('id', 'desc');
+        // Kiểm tra xem có đang yêu cầu danh sách thùng rác (xóa mềm) không
+        if ($request->boolean('trashed') || $request->input('status') === 'trash') {
+            $query = Brand::onlyTrashed()->orderBy('deleted_at', 'desc');
+        } else {
+            $query = Brand::orderBy('id', 'desc');
 
-        // Nếu chỉ lấy thương hiệu đang hoạt động
-        if ($request->boolean('active_only')) {
-            $query->active();
+            // Nếu chỉ lấy thương hiệu đang hoạt động
+            if ($request->boolean('active_only')) {
+                $query->active();
+            }
         }
 
         // Nếu muốn tìm kiếm theo tên thương hiệu
@@ -34,7 +39,12 @@ class BrandController extends Controller
 
         $brands = $query->paginate($perPage);
 
-        return BrandResource::collection($brands);
+        // Đếm số lượng trong thùng rác
+        $trashCount = Brand::onlyTrashed()->count();
+
+        return BrandResource::collection($brands)->additional([
+            'trash_count' => $trashCount,
+        ]);
     }
 
     /**
@@ -107,23 +117,61 @@ class BrandController extends Controller
      * Xóa thương hiệu.
      * DELETE /api/brands/{id}
      */
+    // DELETE /api/brands/{id}
+    // Xóa mềm thương hiệu (chuyển vào thùng rác)
     public function destroy($id)
     {
         try {
-            // Tìm thương hiệu cần xóa theo ID.
             $brand = Brand::findOrFail($id);
 
-            // Xóa thương hiệu khỏi database.
+            // Xóa mềm
             $brand->delete();
 
-            // Trả về thông báo xóa thành công.
             return response()->json([
-                'message' => 'Xóa thương hiệu thành công.',
+                'message' => 'Đã chuyển thương hiệu vào thùng rác (xóa mềm) thành công.',
             ], 200);
         } catch (\Exception $e) {
-            // Nếu xóa bị lỗi thì trả về thông báo lỗi.
             return response()->json([
                 'message' => 'Xóa thương hiệu thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // PUT /api/brands/{id}/restore
+    // Khôi phục thương hiệu từ thùng rác
+    public function restore($id)
+    {
+        try {
+            $brand = Brand::onlyTrashed()->findOrFail($id);
+            $brand->restore();
+
+            return response()->json([
+                'message' => 'Khôi phục thương hiệu thành công.',
+                'data' => new BrandResource($brand),
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Khôi phục thương hiệu thất bại.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // DELETE /api/brands/{id}/force
+    // Xóa vĩnh viễn thương hiệu khỏi hệ thống
+    public function forceDelete($id)
+    {
+        try {
+            $brand = Brand::withTrashed()->findOrFail($id);
+            $brand->forceDelete();
+
+            return response()->json([
+                'message' => 'Đã xóa vĩnh viễn thương hiệu khỏi cơ sở dữ liệu.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Xóa vĩnh viễn thương hiệu thất bại.',
                 'error' => $e->getMessage()
             ], 500);
         }
