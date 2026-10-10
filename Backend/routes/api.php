@@ -11,6 +11,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CartItemController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderDetailController;
+use App\Http\Controllers\PostController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -133,9 +134,28 @@ Route::delete('/order-details/{id}', [OrderDetailController::class, 'destroy']);
 // ==================== API NGƯỜI DÙNG ====================
 Route::get('/users', [UserController::class, 'index']);
 Route::post('/users', [UserController::class, 'store']);
+Route::get('/users/trash', [UserController::class, 'trash']);
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 Route::delete('/users/{id}', [UserController::class, 'destroy']);
+Route::put('/users/{id}/toggle-lock', [UserController::class, 'toggleLock']);
+Route::put('/users/{id}/change-role', [UserController::class, 'changeRole']);
+Route::put('/users/{id}/restore', [UserController::class, 'restore']);
+Route::post('/users/{id}/restore', [UserController::class, 'restore']);
+Route::delete('/users/{id}/force', [UserController::class, 'forceDelete']);
+
+// ==================== API BÀI VIẾT (CRUD, XÓA MỀM, KHÔI PHỤC) ====================
+Route::get('/posts', [PostController::class, 'index']);
+Route::post('/posts', [PostController::class, 'store']);
+Route::get('/posts/trash', [PostController::class, 'trash']);
+Route::get('/post-categories', [PostController::class, 'categories']);
+Route::get('/posts/{id}', [PostController::class, 'show']);
+Route::put('/posts/{id}', [PostController::class, 'update']);
+Route::post('/posts/{id}', [PostController::class, 'update']); // Hỗ trợ FormData POST với file
+Route::delete('/posts/{id}', [PostController::class, 'destroy']);
+Route::put('/posts/{id}/restore', [PostController::class, 'restore']);
+Route::post('/posts/{id}/restore', [PostController::class, 'restore']);
+Route::delete('/posts/{id}/force', [PostController::class, 'forceDelete']);
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
