@@ -170,6 +170,29 @@ export default function Sidebar() {
 
                 </a>
 
+
+
+                {/* =========================
+                    QUẢN LÝ MENU
+                ========================= */}
+                <a
+                    href="/admin/menus"
+                    className="flex items-center gap-3 min-h-[44px] px-3 rounded-xl text-slate-400 text-sm font-medium hover:text-white hover:bg-violet-500/10 transition-all duration-200"
+                >
+                    {/* Icon menu */}
+                    <span className="w-5 h-5 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </span>
+
+                    Menu
+
+                </a>
+
+
+
+                
+
+
             </nav>
 
 

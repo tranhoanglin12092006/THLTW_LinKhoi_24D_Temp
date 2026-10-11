@@ -1,249 +1,226 @@
-// Import Sidebar để hiển thị thanh menu bên trái
+
+"use client";
+
+import { useEffect, useState } from "react";
+
 import Sidebar from "@/components/dashboard/Sidebar";
-
-// Import các component thống kê
 import StatCard from "@/components/dashboard/StatCard";
-
-// Import component biểu đồ doanh thu
 import SalesChart from "@/components/dashboard/SalesChart";
-
-// Import component thống kê trạng thái đơn hàng
 import OrderStatus from "@/components/dashboard/OrderStatus";
-
-// Import component danh sách đơn hàng gần đây
 import RecentOrders from "@/components/dashboard/RecentOrders";
 
 
-// Component chính của trang Dashboard
+import { getDashboardData } from "@/services/dashboardServices";
+
 export default function DashboardPage() {
+    // Luu du lieu Dashboard tu API
+    const [dashboard, setDashboard] = useState(null);
+
+    // Theo doi trang thai tai du lieu
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    // Goi API khi mo trang Dashboard
+    useEffect(() => {
+        async function fetchDashboard() {
+            try {
+                setLoading(true);
+                setError("");
+
+                const response = await getDashboardData();
+
+                // Ho tro ca axios tra response va axios tra truc tiep data
+                const data = response?.data ?? response;
+
+                setDashboard(data);
+            } catch (err) {
+                console.error("Loi tai du lieu Dashboard:", err);
+                setError("Khong the tai du lieu Dashboard.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchDashboard();
+    }, []);
+
+    // Lay gia tri thong ke tu API
+    const thongKe = dashboard?.thong_ke;
+
+    const hienThiSo = (giaTri) => {
+        if (loading) return "...";
+        if (error) return "—";
+
+        return Number(giaTri ?? 0).toLocaleString("vi-VN");
+    };
+
     return (
-
-        // Bao ngoài toàn bộ giao diện Dashboard
-        <div className="min-h-screen bg-[#090b14] text-white" style={{
-            background: 'radial-gradient(ellipse at top right, rgba(109,40,217,0.15), transparent 50%), radial-gradient(ellipse at bottom left, rgba(59,130,246,0.08), transparent 50%), #090b14'
-        }}>
-
-            {/* 
-                Sidebar:
-                Thanh menu nằm bên trái màn hình
-            */}
+        <div
+            className="min-h-screen bg-[#090b14] text-white"
+            style={{
+                background:
+                    "radial-gradient(circle at top right, #151a32 0%, #090b14 45%)",
+            }}
+        >
+            {/* Thanh menu ben trai */}
             <Sidebar />
 
-
-            {/* 
-                Nội dung chính của Dashboard.
-                Phần này nằm bên phải Sidebar.
-            */}
-            <main className="ml-[260px] p-8 min-h-screen">
-
-
-                {/* =========================
-                    PHẦN TIÊU ĐỀ
-                ========================= */}
-                <div className="flex items-center justify-between mb-8">
-
-                    {/* Tên trang và mô tả */}
+            {/* Noi dung chinh */}
+            <main className="ml-[260px] min-h-screen p-8">
+                {/* Tieu de Dashboard */}
+                <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
                     <div>
-
-                        <h1 className="m-0 text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                        <h1 className="text-3xl font-bold text-white">
                             Dashboard
                         </h1>
 
-                        <p className="mt-2 text-slate-500 text-sm">
-                            Tổng quan hệ thống bán hàng
+                        <p className="mt-2 text-sm text-gray-400">
+                            Tong quan hoat dong kinh doanh
                         </p>
-
                     </div>
 
-
-                    {/* 
-                        Phần bên phải tiêu đề.
-                    */}
-                    <div className="flex items-center gap-3">
-                        <div className="px-4 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-slate-400 text-xs font-medium backdrop-blur-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300">
                             📅 Tháng 10, 2026
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-violet-500/20 cursor-pointer hover:shadow-violet-500/40 transition-shadow">
+
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 font-bold text-white">
                             A
                         </div>
                     </div>
-
                 </div>
 
+                {/* Thong bao loi khi API that bai */}
+                {error && (
+                    <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                        {error}
+                        <button
+                            type="button"
+                            onClick={() => window.location.reload()}
+                            className="ml-3 underline"
+                        >
+                            Tai lai trang
+                        </button>
+                    </div>
+                )}
 
-
-                {/* =========================
-                    4 Ô THỐNG KÊ
-                    Sản phẩm
-                    Danh mục
-                    Đơn hàng
-                    Người dùng
-                ========================= */}
-
-                <div className="grid grid-cols-4 gap-5 mb-6">
-
-
-                    {/* Thống kê sản phẩm */}
+                {/* Cac the thong ke */}
+                <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard
                         title="Sản phẩm"
-                        value="356"
-                        description="Sản phẩm đang có"
-                        color="purple"
-                        icon={
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                        }
+                        value={hienThiSo(thongKe?.san_pham)}
+                        icon="📦"
+                        color="#8b5cf6"
                     />
 
-
-                    {/* Thống kê danh mục */}
                     <StatCard
                         title="Danh mục"
-                        value="24"
-                        description="Danh mục sản phẩm"
-                        color="blue"
-                        icon={
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        }
+                        value={hienThiSo(thongKe?.danh_muc)}
+                        icon="📁"
+                        color="#06b6d4"
                     />
 
-
-                    {/* Thống kê đơn hàng */}
                     <StatCard
                         title="Đơn hàng"
-                        value="128"
-                        description="Đơn hàng trong tháng"
-                        color="pink"
-                        icon={
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                        }
+                        value={hienThiSo(thongKe?.don_hang)}
+                        icon="🛒"
+                        color="#f59e0b"
                     />
 
-
-                    {/* Thống kê người dùng */}
                     <StatCard
                         title="Người dùng"
-                        value="892"
-                        description="Tài khoản khách hàng"
-                        color="cyan"
-                        icon={
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        }
+                        value={hienThiSo(thongKe?.nguoi_dung)}
+                        icon="👥"
+                        color="#10b981"
                     />
-
                 </div>
 
-
-
-                {/* =========================
-                    KHU VỰC BIỂU ĐỒ
-                    Bên trái: Doanh thu
-                    Bên phải: Trạng thái đơn hàng
-                ========================= */}
-
-                <div className="grid grid-cols-[2fr_1fr] gap-5 mb-6">
-
-
-                    {/* Biểu đồ doanh thu */}
-                    <SalesChart />
-
-
-                    {/* Thống kê trạng thái đơn hàng */}
-                    <OrderStatus />
-
-                </div>
-
-
-
-                {/* =========================
-                    KHU VỰC PHÍA DƯỚI
-                    Bên trái: Đơn hàng gần đây
-                    Bên phải: Thương hiệu
-                ========================= */}
-
-                <div className="grid grid-cols-[2fr_1fr] gap-5 mb-6">
-
-
-                    {/* Danh sách các đơn hàng mới */}
-                    <RecentOrders />
-
-
-                    {/* 
-                        Thống kê thương hiệu.
-                        Hiện tại dùng dữ liệu mẫu.
-                    */}
-                    <div className="rounded-2xl border border-white/[0.06] bg-[#111328]/80 backdrop-blur-sm p-6">
-
-
-                        {/* Tiêu đề phần thương hiệu */}
-                        <div className="flex items-center justify-between mb-5">
-
-                            <div>
-
-                                <h3 className="m-0 text-[15px] font-semibold text-white">
-                                    Thương hiệu
-                                </h3>
-
-                                <p className="mt-1.5 text-[11px] text-slate-500">
-                                    Số lượng sản phẩm theo thương hiệu
-                                </p>
-
-                            </div>
-
-                        </div>
-
-
-                        {/* Danh sách thương hiệu */}
-                        <div className="flex flex-col gap-4">
-
-
-                            {/* Thương hiệu thứ nhất */}
-                            <div className="flex justify-between items-center pb-3.5 border-b border-white/[0.05]">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 text-xs font-bold">A</div>
-                                    <span className="text-[12px] text-slate-400">Thương hiệu A</span>
-                                </div>
-                                <strong className="text-white text-sm font-semibold">85</strong>
-                            </div>
-
-
-                            {/* Thương hiệu thứ hai */}
-                            <div className="flex justify-between items-center pb-3.5 border-b border-white/[0.05]">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-xs font-bold">B</div>
-                                    <span className="text-[12px] text-slate-400">Thương hiệu B</span>
-                                </div>
-                                <strong className="text-white text-sm font-semibold">64</strong>
-                            </div>
-
-
-                            {/* Thương hiệu thứ ba */}
-                            <div className="flex justify-between items-center pb-3.5 border-b border-white/[0.05]">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-400 text-xs font-bold">C</div>
-                                    <span className="text-[12px] text-slate-400">Thương hiệu C</span>
-                                </div>
-                                <strong className="text-white text-sm font-semibold">51</strong>
-                            </div>
-
-
-                            {/* Thương hiệu thứ tư */}
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 text-xs font-bold">D</div>
-                                    <span className="text-[12px] text-slate-400">Thương hiệu D</span>
-                                </div>
-                                <strong className="text-white text-sm font-semibold">37</strong>
-                            </div>
-
-
-                        </div>
-
+                {/* Bieu do va thong ke trang thai don hang */}
+                <div className="mb-8 grid grid-cols-1 gap-6 xl:grid-cols-3">
+                    <div className="min-w-0 xl:col-span-2">
+                        <SalesChart />
                     </div>
 
+                    <div className="min-w-0">
+                        <OrderStatus />
+                    </div>
                 </div>
 
-            </main>
+                {/* Danh sach don hang gan day */}
+                <div className="mb-8">
+                    <RecentOrders />
+                </div>
 
+                {/* Thong ke thuong hieu */}
+                <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-semibold text-white">
+                            Thương hiệu nổi bật
+                        </h2>
+
+                        <p className="mt-1 text-sm text-gray-400">
+                            Thống kê sản phẩm theo thương hiệu
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {[
+                            {
+                                ten: "Thương hiệu A",
+                                soLuong: 85,
+                                mau: "#8b5cf6",
+                            },
+                            {
+                                ten: "Thương hiệu B",
+                                soLuong: 64,
+                                mau: "#06b6d4",
+                            },
+                            {
+                                ten: "Thương hiệu C",
+                                soLuong: 51,
+                                mau: "#f59e0b",
+                            },
+                            {
+                                ten: "Thương hiệu D",
+                                soLuong: 37,
+                                mau: "#10b981",
+                            },
+                        ].map((thuongHieu, index) => (
+                            <div
+                                key={index}
+                                className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
+                            >
+                                <div className="mb-4 flex items-center justify-between gap-3">
+                                    <span className="text-sm text-gray-300">
+                                        {thuongHieu.ten}
+                                    </span>
+
+                                    <span
+                                        className="h-2.5 w-2.5 rounded-full"
+                                        style={{
+                                            backgroundColor: thuongHieu.mau,
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="mb-3 text-2xl font-bold text-white">
+                                    {thuongHieu.soLuong}
+                                </div>
+
+                                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                                    <div
+                                        className="h-full rounded-full"
+                                        style={{
+                                            width: `${(thuongHieu.soLuong / 85) * 100}%`,
+                                            backgroundColor: thuongHieu.mau,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </main>
         </div>
     );
 }

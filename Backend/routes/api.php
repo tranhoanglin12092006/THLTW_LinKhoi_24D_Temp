@@ -12,6 +12,8 @@ use App\Http\Controllers\CartItemController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderDetailController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\MenuController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,6 +23,10 @@ Route::get('/user', function (Request $request) {
 // Route::middleware('auth:sanctum')->group(function () {
 
     // Route::middleware('is.admin')->group(function () {
+
+    // API thong ke Dashboard
+        Route::get('/dashboard', [DashboardController::class, 'index']);
+        
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::get('/category/{id}', [CategoryController::class, 'show']);
@@ -128,7 +134,7 @@ Route::post('/order-details', [OrderDetailController::class, 'store']);
 Route::get('/order-details/{id}', [OrderDetailController::class, 'show']);
 Route::put('/order-details/{id}', [OrderDetailController::class, 'update']);
 Route::delete('/order-details/{id}', [OrderDetailController::class, 'destroy']);
-
+Route::patch('/orders/{id}/status', [OrderController::class, 'updateStatus']);
 
 
 // ==================== API NGƯỜI DÙNG ====================
@@ -156,6 +162,23 @@ Route::delete('/posts/{id}', [PostController::class, 'destroy']);
 Route::put('/posts/{id}/restore', [PostController::class, 'restore']);
 Route::post('/posts/{id}/restore', [PostController::class, 'restore']);
 Route::delete('/posts/{id}/force', [PostController::class, 'forceDelete']);
+
+
+/*
+|--------------------------------------------------------------------------
+| API quan ly menu
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/menus', [MenuController::class, 'index']);
+Route::get('/menus/trash', [MenuController::class, 'trash']);
+Route::get('/menus/{id}', [MenuController::class, 'show']);
+Route::post('/menus', [MenuController::class, 'store']);
+Route::put('/menus/{id}', [MenuController::class, 'update']);
+Route::delete('/menus/{id}', [MenuController::class, 'destroy']);
+Route::post('/menus/{id}/restore', [MenuController::class, 'restore']);
+Route::delete('/menus/{id}/force', [MenuController::class, 'forceDestroy']);
+
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);

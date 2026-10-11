@@ -65,3 +65,20 @@ export async function deleteOrder(id) {
         throw error;
     }
 }
+
+// 6. Cập nhật trạng thái đơn hàng
+export async function updateOrderStatus(id, trangThai) {
+    try {
+        const res = await axiosClient.patch(
+            `/orders/${id}/status`,
+            {
+                trang_thai: trangThai,
+            }
+        );
+
+        return res;
+    } catch (error) {
+        console.error("Lỗi cập nhật trạng thái đơn hàng:", error);
+        throw error;
+    }
+}

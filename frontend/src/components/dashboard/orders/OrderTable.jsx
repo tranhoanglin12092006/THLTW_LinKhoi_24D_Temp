@@ -1,17 +1,18 @@
+
 "use client";
 
 import { formatCurrency } from "@/utils/formatCurrency";
 
 export default function OrderTable({
-    orders,
-    loading,
+    orders = [],
+    loading = false,
     onView,
-    onEdit,
-    onDelete,
+    onUpdateStatus,
+    updatingStatus,
 }) {
-    // Hiển thị trạng thái đơn hàng
+    // Lay trang thai don hang
     const getStatus = (status) => {
-        switch (Number(status)) {
+        switch (status) {
             case 0:
                 return {
                     text: "Chờ xử lý",
@@ -56,12 +57,23 @@ export default function OrderTable({
         }
     };
 
+    // Danh sach trang thai
+    const statusOptions = [
+        { value: 0, label: "Chờ xử lý" },
+        { value: 1, label: "Đang xử lý" },
+        { value: 2, label: "Đang giao" },
+        { value: 3, label: "Đã giao" },
+        { value: 4, label: "Đã hủy" },
+    ];
+
+    // Kiem tra danh sach don hang
+    const orderList = Array.isArray(orders) ? orders : [];
+
     return (
         <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#111328]/80 shadow-xl backdrop-blur-sm">
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[1200px] border-collapse text-left">
-
-                    {/* Tiêu đề bảng */}
+                    {/* Tieu de bang */}
                     <thead>
                         <tr className="border-b border-white/[0.06] bg-white/[0.02]">
                             <th className="w-16 px-4 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -102,10 +114,8 @@ export default function OrderTable({
                         </tr>
                     </thead>
 
-                    {/* Dữ liệu */}
+                    {/* Du lieu don hang */}
                     <tbody className="divide-y divide-white/[0.04]">
-
-                        {/* Đang tải */}
                         {loading ? (
                             <tr>
                                 <td
@@ -118,10 +128,7 @@ export default function OrderTable({
                                     </div>
                                 </td>
                             </tr>
-
-                        ) : orders.length === 0 ? (
-
-                            /* Không có dữ liệu */
+                        ) : orderList.length === 0 ? (
                             <tr>
                                 <td
                                     colSpan={9}
@@ -130,48 +137,63 @@ export default function OrderTable({
                                     Không tìm thấy đơn hàng nào.
                                 </td>
                             </tr>
-
                         ) : (
+                            orderList.map((order) => {
+                                // Chuyen trang thai thanh so an toan
+                                const rawStatus = order.trang_thai;
 
-                            /* Hiển thị danh sách */
-                            orders.map((order) => {
-                                const status = getStatus(order.trang_thai);
+                                const trangThai =
+                                    rawStatus !== null &&
+                                    rawStatus !== undefined &&
+                                    rawStatus !== "" &&
+                                    Number.isInteger(Number(rawStatus)) &&
+                                    Number(rawStatus) >= 0 &&
+                                    Number(rawStatus) <= 4
+                                        ? Number(rawStatus)
+                                        : null;
+
+                                const status = getStatus(trangThai);
+                                const isUpdating =
+                                    updatingStatus === order.id;
+
+                                // Don da giao hoac da huy thi khong doi trang thai
+                                const isFinalStatus =
+                                    trangThai === 3 || trangThai === 4;
 
                                 return (
                                     <tr
                                         key={order.id}
                                         className="text-xs text-slate-300 transition-colors hover:bg-white/[0.02]"
                                     >
-
                                         {/* ID */}
                                         <td className="px-4 py-3.5 font-mono text-[11px] text-slate-500">
                                             #{order.id}
                                         </td>
 
-                                        {/* Mã đơn hàng */}
+                                        {/* Ma don hang */}
                                         <td className="px-4 py-3.5">
                                             <span className="font-semibold text-white">
-                                                {order.ma_don_hang}
+                                                {order.ma_don_hang || "—"}
                                             </span>
                                         </td>
 
-                                        {/* Người nhận */}
+                                        {/* Nguoi nhan */}
                                         <td className="px-4 py-3.5">
                                             <div className="font-medium text-white">
-                                                {order.ten_nguoi_nhan}
+                                                {order.ten_nguoi_nhan || "—"}
                                             </div>
 
                                             <div className="mt-1 max-w-[220px] truncate text-[11px] text-slate-500">
-                                                {order.dia_chi}
+                                                {order.dia_chi || "—"}
                                             </div>
                                         </td>
 
-                                        {/* Số điện thoại */}
+                                        {/* So dien thoai */}
                                         <td className="px-4 py-3.5 text-slate-400">
-                                            {order.so_dien_thoai}
+                                            {order.so_dien_thoai || "—"}
                                         </td>
 
-                                        {/* Phương thức thanh toán */}
+                                        {/* Phuong thuc thanh toan */}
                                         <td className="px-4 py-3.5">
                                             <span className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-300">
                                                 {order.phuong_thuc_thanh_toan ||
@@ -179,66 +201,128 @@ export default function OrderTable({
                                             </span>
                                         </td>
 
-                                        {/* Tổng tiền */}
+                                        {/* Tong tien */}
                                         <td className="px-4 py-3.5 font-semibold text-violet-400">
-                                            {formatCurrency(order.tong_tien)}
+                                            {formatCurrency(
+                                                Number(order.tong_tien) || 0
+                                            )}
                                         </td>
 
-                                        {/* Trạng thái */}
+                                        {/* Trang thai */}
                                         <td className="px-4 py-3.5">
                                             <span
                                                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${status.className}`}
                                             >
                                                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
-
                                                 {status.text}
                                             </span>
                                         </td>
 
-                                        {/* Ngày tạo */}
+                                        {/* Ngay tao */}
                                         <td className="px-4 py-3.5 text-slate-500">
                                             {order.created_at
                                                 ? new Date(
-                                                    order.created_at
-                                                ).toLocaleDateString(
-                                                    "vi-VN"
-                                                )
+                                                      order.created_at
+                                                  ).toLocaleDateString("vi-VN")
                                                 : "—"}
                                         </td>
 
-                                        {/* Thao tác */}
+                                        {/* Thao tac */}
                                         <td className="px-4 py-3.5 text-right">
                                             <div className="inline-flex items-center gap-2">
-
-                                                {/* Xem */}
+                                                {/* Xem chi tiet */}
                                                 <button
                                                     type="button"
-                                                    onClick={() => onView?.(order)}
+                                                    onClick={() =>
+                                                        onView?.(order)
+                                                    }
                                                     className="rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-400 transition-colors hover:bg-violet-500/20 hover:text-violet-300"
                                                 >
                                                     Xem
                                                 </button>
 
-                                                {/* Sửa - đơn đã hủy thì không được sửa */}
-                                                {Number(order.trang_thai) !== 4 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onEdit?.(order)}
-                                                        className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-[11px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/20 hover:text-blue-300"
-                                                    >
-                                                        Sửa
-                                                    </button>
+                                                {/* Cap nhat trang thai */}
+                                                {trangThai !== null &&
+                                                    !isFinalStatus && (
+                                                        <select
+                                                            value={String(
+                                                                trangThai
+                                                            )}
+                                                            disabled={
+                                                                isUpdating
+                                                            }
+                                                            onChange={(e) => {
+                                                                const newStatus =
+                                                                    Number(
+                                                                        e.target
+                                                                            .value
+                                                                    );
+
+                                                                if (
+                                                                    Number.isInteger(
+                                                                        newStatus
+                                                                    ) &&
+                                                                    newStatus >=
+                                                                        0 &&
+                                                                    newStatus <=
+                                                                        4 &&
+                                                                    newStatus !==
+                                                                        trangThai
+                                                                ) {
+                                                                    onUpdateStatus?.(
+                                                                        order,
+                                                                        newStatus
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="max-w-[145px] rounded-xl border border-blue-500/20 bg-[#151728] px-2 py-1.5 text-[11px] text-blue-300 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            aria-label={`Cập nhật trạng thái đơn hàng ${order.ma_don_hang || order.id}`}
+                                                        >
+                                                            <option
+                                                                value={String(
+                                                                    trangThai
+                                                                )}
+                                                            >
+                                                                {status.text}
+                                                            </option>
+
+                                                            {statusOptions
+                                                                .filter(
+                                                                    (option) =>
+                                                                        option.value !==
+                                                                        trangThai
+                                                                )
+                                                                .map((option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={String(
+                                                                            option.value
+                                                                        )}
+                                                                        className="bg-[#151728] text-white"
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                    )}
+
+                                                {/* Bao loi neu don hang thieu trang thai */}
+                                                {trangThai === null && (
+                                                    <span className="text-[11px] text-rose-400">
+                                                        Thiếu trạng thái
+                                                    </span>
                                                 )}
 
-                                                {/* Xóa - kể cả đơn đã hủy vẫn được xóa */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onDelete?.(order.id)}
-                                                    className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 text-[11px] font-semibold text-rose-400 transition-colors hover:bg-rose-500/20 hover:text-rose-300"
-                                                >
-                                                    Xóa
-                                                </button>
-
+                                                {/* Hien thi khi dang cap nhat */}
+                                                {isUpdating && (
+                                                    <span className="text-[10px] text-slate-400">
+                                                        Đang lưu...
+                                                    </span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

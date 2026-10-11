@@ -4,25 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Menu extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    /**
-     * Tên bảng dữ liệu tương ứng (tiếng Việt).
-     */
+    // Ten bang trong database
     protected $table = 'menu';
 
-    /**
-     * Các trường được phép gán hàng loạt.
-     */
+    // Cac truong duoc phep them va cap nhat
     protected $fillable = [
         'ten',
         'url',
         'thu_tu',
-        'trang_thai'
+        'trang_thai',
     ];
-
-
 }
+

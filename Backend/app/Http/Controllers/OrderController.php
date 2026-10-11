@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Http\Requests\OrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -98,6 +99,39 @@ class OrderController extends Controller
             ], 500);
         }
     }
+
+
+    // Cap nhat trang thai don hang
+    public function updateStatus(Request $request, $id): JsonResponse
+    {
+        // Tim don hang theo ID
+        $order = Order::findOrFail($id);
+
+        // Don da huy hoac da giao thi khong cho cap nhat
+        if (in_array((int) $order->trang_thai, [3, 4], true)) {
+            return response()->json([
+                'message' => 'Don hang da giao hoac da huy, khong the cap nhat.'
+            ], 422);
+        }
+
+        // Kiem tra trang thai moi
+        $data = $request->validate([
+            'trang_thai' => 'required|integer|in:0,1,2,3,4',
+        ]);
+
+        // Cap nhat trang thai
+        $order->update([
+            'trang_thai' => $data['trang_thai'],
+        ]);
+
+        return response()->json([
+            'message' => 'Cap nhat trang thai don hang thanh cong.',
+            'data' => new OrderResource(
+                $order->load('chiTietDonHangs.sanPham')
+            ),
+        ]);
+    }
+
 
     // Xóa đơn hàng
     public function destroy($id): JsonResponse

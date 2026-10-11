@@ -315,6 +315,27 @@ export default function ProductsPage() {
             </div>
 
 
+            {/* Tong so san pham */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-400">
+                    {showTrash
+                        ? "Danh sách sản phẩm đã xóa"
+                        : "Danh sách sản phẩm"}
+                </p>
+
+                <p className="text-sm text-slate-500">
+                    Tổng cộng{" "}
+                    <span className="font-semibold text-slate-200">
+                        {filteredProducts.length}
+                    </span>{" "}
+                    {showTrash ? "sản phẩm đã xóa" : "sản phẩm"}
+                </p>
+            </div>
+
+        
+            
+
+
 
             {/* Bảng sản phẩm */}
             <ProductTable
