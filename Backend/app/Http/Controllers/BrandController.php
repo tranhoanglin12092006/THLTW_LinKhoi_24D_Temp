@@ -124,6 +124,14 @@ class BrandController extends Controller
         try {
             $brand = Brand::findOrFail($id);
 
+            // Ràng buộc: Thương hiệu có sản phẩm thì không được xóa
+            $productCount = $brand->sanPhams()->count();
+            if ($productCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa! Thương hiệu này đang có {$productCount} sản phẩm liên kết. Vui lòng chuyển hoặc xóa sản phẩm trước."
+                ], 400);
+            }
+
             // Xóa mềm
             $brand->delete();
 
@@ -164,6 +172,15 @@ class BrandController extends Controller
     {
         try {
             $brand = Brand::withTrashed()->findOrFail($id);
+
+            // Ràng buộc: Thương hiệu có sản phẩm thì không được xóa vĩnh viễn
+            $productCount = $brand->sanPhams()->count();
+            if ($productCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa vĩnh viễn! Thương hiệu này đang có {$productCount} sản phẩm liên kết."
+                ], 400);
+            }
+
             $brand->forceDelete();
 
             return response()->json([

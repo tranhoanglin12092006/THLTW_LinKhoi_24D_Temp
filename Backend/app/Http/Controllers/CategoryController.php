@@ -100,6 +100,22 @@ class CategoryController extends Controller
         try {
             $category = Category::findOrFail($id);
 
+            // Ràng buộc 1: Danh mục có sản phẩm thì không được xóa (bao gồm cả sản phẩm chưa xóa hoặc đã xóa mềm)
+            $productCount = $category->sanPhams()->count();
+            if ($productCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa! Danh mục này đang chứa {$productCount} sản phẩm. Vui lòng chuyển hoặc xóa sản phẩm trước."
+                ], 400);
+            }
+
+            // Ràng buộc 2: Danh mục cha có danh mục con thì không được xóa
+            $childCount = $category->children()->count();
+            if ($childCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa! Danh mục này đang có {$childCount} danh mục con trực thuộc."
+                ], 400);
+            }
+
             // Xóa mềm (Model sử dụng SoftDeletes sẽ tự động cập nhật cột deleted_at)
             $category->delete();
 
@@ -140,6 +156,23 @@ class CategoryController extends Controller
     {
         try {
             $category = Category::withTrashed()->findOrFail($id);
+
+            // Ràng buộc 1: Danh mục có sản phẩm thì không được xóa vĩnh viễn
+            $productCount = $category->sanPhams()->count();
+            if ($productCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa vĩnh viễn! Danh mục này đang chứa {$productCount} sản phẩm."
+                ], 400);
+            }
+
+            // Ràng buộc 2: Danh mục có danh mục con thì không được xóa vĩnh viễn
+            $childCount = $category->children()->count();
+            if ($childCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa vĩnh viễn! Danh mục này đang có {$childCount} danh mục con."
+                ], 400);
+            }
+
             $category->forceDelete();
 
             return response()->json([
