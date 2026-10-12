@@ -338,6 +338,7 @@ function renderProductCard(p) {
         <div class="product-card group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300">
             <!-- Badges -->
             <div class="absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10 flex flex-col gap-1 items-start">
+                ${(p.stock !== undefined && p.stock <= 0) ? `<span class="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-black text-rose-300 bg-slate-900/90 border border-rose-500/40 rounded-lg shadow-sm">TẠM HẾT</span>` : ''}
                 ${p.badge === 'HOT' ? `<span class="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold text-white bg-gradient-to-r from-amber-500 to-rose-500 rounded-lg shadow-sm flex items-center gap-1">🔥 HOT</span>` : ''}
                 ${p.badge === 'NEW' ? `<span class="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold text-white bg-blue-600 rounded-lg shadow-sm">NEW</span>` : ''}
                 ${p.badge === 'SALE' || p.discount ? `<span class="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11px] font-bold text-white bg-rose-600 rounded-lg shadow-sm">-${p.discount}%</span>` : ''}
@@ -351,8 +352,16 @@ function renderProductCard(p) {
             <!-- Image Container -->
             <div class="relative pt-[88%] bg-slate-50 dark:bg-slate-800/50 img-zoom-container">
                 <a href="product-detail.html?id=${p.id}" class="absolute inset-0 p-2 sm:p-4 flex items-center justify-center">
-                    <img src="${p.image}" alt="${p.name}" class="img-zoom-target w-full h-full object-cover rounded-xl" loading="lazy">
+                    <img src="${p.image}" alt="${p.name}" class="img-zoom-target w-full h-full object-cover rounded-xl ${(p.stock !== undefined && p.stock <= 0) ? 'grayscale contrast-75' : ''}" loading="lazy">
                 </a>
+
+                ${(p.stock !== undefined && p.stock <= 0) ? `
+                    <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center p-3 pointer-events-none">
+                        <span class="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-black text-[11px] uppercase tracking-wider shadow-lg border border-white/20">
+                            ĐÃ HẾT HÀNG
+                        </span>
+                    </div>
+                ` : ''}
                 
                 <!-- Quick View Overlay Button -->
                 <button onclick="openQuickView(${p.id})" class="hidden sm:flex absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 px-3.5 py-1.5 bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 text-xs font-semibold rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 items-center gap-1.5 whitespace-nowrap">
@@ -400,10 +409,16 @@ function renderProductCard(p) {
                         </div>
                     ` : ''}
 
-                    <!-- Add To Cart Button -->
-                    <button onclick="addToCart(${p.id})" class="w-full py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-slate-800 hover:text-white dark:text-slate-200 dark:hover:text-white text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 active:scale-95 shadow-sm">
-                        <i data-lucide="shopping-cart" class="w-3.5 h-3.5 flex-shrink-0"></i> <span>Thêm vào giỏ</span>
-                    </button>
+                    <!-- Add To Cart Button hoặc Đã hết hàng -->
+                    ${(p.stock !== undefined && p.stock <= 0) ? `
+                        <button disabled class="w-full py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 cursor-not-allowed border border-slate-200 dark:border-slate-700 select-none">
+                            <i data-lucide="slash" class="w-3.5 h-3.5 flex-shrink-0"></i> <span>Đã hết hàng</span>
+                        </button>
+                    ` : `
+                        <button onclick="addToCart(${p.id})" class="w-full py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl bg-slate-100 hover:bg-blue-600 dark:bg-slate-800 dark:hover:bg-blue-600 text-slate-800 hover:text-white dark:text-slate-200 dark:hover:text-white text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-all duration-200 active:scale-95 shadow-sm">
+                            <i data-lucide="shopping-cart" class="w-3.5 h-3.5 flex-shrink-0"></i> <span>Thêm vào giỏ</span>
+                        </button>
+                    `}
                 </div>
             </div>
         </div>
