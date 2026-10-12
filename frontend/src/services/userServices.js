@@ -138,3 +138,14 @@ export async function registerUser(data) {
         throw error;
     }
 }
+
+// 11. Đăng nhập tài khoản (POST /api/login)
+export async function loginUser(data) {
+    try {
+        const res = await axiosClient.post("/login", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi đăng nhập tài khoản:", error);
+        throw error;
+    }
+}
