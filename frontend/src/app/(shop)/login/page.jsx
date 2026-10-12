@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Login() {
     // Gọi function toggle password từ file JavaScript cũ
     const handleTogglePassword = () => {
@@ -216,12 +218,12 @@ export default function Login() {
                     <div className="text-center text-xs text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
                         Chưa có tài khoản?
 
-                        <a
-                            href="register.html"
+                        <Link
+                            href="/register"
                             className="font-bold text-blue-600 dark:text-blue-400 hover:underline ml-1"
                         >
                             Đăng ký ngay
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </main>
