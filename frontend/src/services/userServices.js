@@ -127,3 +127,25 @@ export async function forceDeleteUser(id) {
         throw error;
     }
 }
+
+// 10. Đăng ký tài khoản người dùng mới (POST /api/register)
+export async function registerUser(data) {
+    try {
+        const res = await axiosClient.post("/register", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi đăng ký tài khoản:", error);
+        throw error;
+    }
+}
+
+// 11. Đăng nhập tài khoản (POST /api/login)
+export async function loginUser(data) {
+    try {
+        const res = await axiosClient.post("/login", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi đăng nhập tài khoản:", error);
+        throw error;
+    }
+}

@@ -140,6 +140,14 @@ class ProductController extends Controller
         try {
             $product = Product::findOrFail($id);
 
+            // Ràng buộc: Sản phẩm đã có trong đơn hàng thì không được xóa
+            $orderCount = $product->chiTietDonHangs()->count();
+            if ($orderCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa! Sản phẩm này đã tồn tại trong {$orderCount} đơn hàng của khách."
+                ], 400);
+            }
+
             // Xóa mềm sản phẩm.
             // Dữ liệu vẫn còn trong database và chỉ cập nhật deleted_at.
             $product->delete();
@@ -204,6 +212,14 @@ class ProductController extends Controller
         try {
             // Tìm sản phẩm kể cả khi đã bị xóa mềm.
             $product = Product::withTrashed()->findOrFail($id);
+
+            // Ràng buộc: Sản phẩm đã có trong đơn hàng thì không được xóa vĩnh viễn
+            $orderCount = $product->chiTietDonHangs()->count();
+            if ($orderCount > 0) {
+                return response()->json([
+                    'message' => "Không thể xóa vĩnh viễn! Sản phẩm này đã tồn tại trong {$orderCount} đơn hàng của khách."
+                ], 400);
+            }
 
             // Xóa hình ảnh khỏi storage nếu sản phẩm có ảnh.
             if ($product->hinh_anh) {
