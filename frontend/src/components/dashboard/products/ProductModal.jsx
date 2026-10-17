@@ -12,7 +12,7 @@ export default function ProductModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
             <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#14162e] p-6 shadow-2xl">
-                
+
                 {/* Header modal */}
                 <div className="mb-5 flex items-center justify-between border-b border-white/[0.08] pb-3">
                     <div>
@@ -39,7 +39,7 @@ export default function ProductModal({
                     </button>
                 </div>
 
-                {/* Form sản phẩm */}
+
                 <ProductForm
                     product={product}
                     categories={categories}
@@ -47,6 +47,7 @@ export default function ProductModal({
                     onClose={onClose}
                     onSubmit={onSubmit}
                 />
+
             </div>
         </div>
     );

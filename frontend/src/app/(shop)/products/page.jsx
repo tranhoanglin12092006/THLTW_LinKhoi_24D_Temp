@@ -1,181 +1,406 @@
 
 "use client";
 
-import { useEffect } from "react";
+
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+
+import { getAllProducts } from "@/services/productServices";
+import { getAllCategories } from "@/services/categoryServices";
+
+
+
+
+// Chuyển đường dẫn ảnh từ Laravel thành URL đầy đủ
+function getImageUrl(image) {
+    if (!image || typeof image !== "string") return "";
+
+    if (/^https?:\/\//i.test(image)) {
+        return image;
+    }
+
+    const base = (
+        process.env.NEXT_PUBLIC_IMAGE_URL ||
+        (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api")
+            .replace(/\/api\/?$/, "")
+    )
+        .trim()
+        .replace(/\/storage\/?$/, "")
+        .replace(/\/$/, "");
+
+    return `${base}/storage/${image
+        .replace(/^\/+/, "")
+        .replace(/^storage\//, "")}`;
+}
+
+// Chuan hoa chu de so sanh
+function normalizeText(value = "") {
+    return String(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .toLowerCase()
+        .trim();
+}
+
+
+
+
+
+function matchesCategoryFilter(product, filterKey) {
+    const text = normalizeText(
+        `${product.name} ${product.categoryName} ${product.categorySlug}`
+    );
+
+    const categoryId = Number(product.categoryId);
+
+    const isLaptop =
+        categoryId === 16 ||
+        /laptop|may tinh xach tay|notebook|macbook/.test(text);
+
+    const isHeadphone =
+        categoryId === 17 ||
+        /tai nghe|headphone|earphone|earbuds/.test(text);
+
+    const isTablet =
+        /may tinh bang|tablet|ipad|galaxy tab/.test(text);
+
+    const isPhone =
+        /iphone|dien thoai|smartphone|samsung galaxy|redmi|oppo|vivo|realme/.test(text) &&
+        !isTablet &&
+        !isHeadphone;
+
+    const isGaming =
+        /gaming gear|gaming|choi game|ban phim co|chuot gaming/.test(text) &&
+        !isHeadphone;
+
+    const isAccessories =
+        /phu kien|accessories/.test(text) &&
+        !isPhone &&
+        !isTablet &&
+        !isHeadphone &&
+        !isLaptop &&
+        !isGaming;
+
+    switch (filterKey) {
+        case "phone":
+            return categoryId === 4 || isPhone;
+        case "laptop":
+            return isLaptop;
+        case "tablet":
+            return isTablet;
+        case "headphone":
+            return isHeadphone;
+        case "gaming":
+            return isGaming;
+        case "accessories":
+            return isAccessories;
+        default:
+            return false;
+    }
+}
+
+
+
+
+
 export default function Products() {
+    const searchParams = useSearchParams();
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    
+
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [selectedPrice, setSelectedPrice] = useState("all");
+    const [selectedBrand, setSelectedBrand] = useState("all");
+    const [selectedRating, setSelectedRating] = useState(0);
+    const [sortBy, setSortBy] = useState("default");
+    const [currentPage, setCurrentPage] = useState(1);
+
+  
+    const productsPerPage = 9;
+
 
     useEffect(() => {
-        // Biến dùng để đánh dấu component đã bị unmount hay chưa.
-        // false = component vẫn còn tồn tại.
-        // true = component đã bị hủy/rời khỏi trang.
+        const keyword = searchParams.get("search") || "";
+        setSearchTerm(keyword);
+        setCurrentPage(1);
+    }, [searchParams]);
+
+
+    // Lay san pham truc tiep tu API Laravel
+    useEffect(() => {
         let cancelled = false;
 
-        // Hàm thực hiện việc lấy dữ liệu và render sản phẩm
-        const renderProducts = () => {
+        async function loadProducts() {
+            try {
+                setLoading(true);
+                setError("");
 
-            // Nếu component đã bị hủy thì dừng hàm,
-            // không tiếp tục thao tác với DOM nữa.
-            if (cancelled) return;
+                const response = await getAllProducts();
+                const body = response?.data ?? response;
 
-            // Lấy danh sách sản phẩm từ biến toàn cục
-            // được khai báo trong file data.js.
-            //
-            // window.TECHNOVA_DATA?.products
-            // dấu ?. giúp tránh lỗi nếu TECHNOVA_DATA chưa tồn tại.
-            const products = window.TECHNOVA_DATA?.products;
+                // Ho tro API tra ve mang truc tiep hoac { data: [...] }
+                const list = Array.isArray(body)
+                    ? body
+                    : Array.isArray(body?.data)
+                        ? body.data
+                        : [];
 
-            // Lấy hàm renderProductCard từ JavaScript toàn cục.
-            // Hàm này có nhiệm vụ tạo HTML cho từng sản phẩm.
-            const renderProductCard = window.renderProductCard;
+                if (cancelled) return;
 
-            // Tìm phần tử HTML có id="shop-product-grid".
-            // Đây là nơi các sản phẩm sẽ được đưa vào.
-            const productGrid =
-                document.getElementById("shop-product-grid");
+                const activeProducts = list
+                    .filter((p) => Number(p.trang_thai ?? 1) === 1)
+                    .map((p) => {
+                        const originalPrice = Number(p.gia ?? 0);
+                        const salePrice = Number(p.gia_khuyen_mai ?? 0);
+                        const hasSale =
+                            salePrice > 0 && salePrice < originalPrice;
 
+                        return {
+                            id: p.id,
+                            name: p.ten ?? "Chưa có tên",
+                            brand: p.thuong_hieu?.ten ?? "",
+                            categoryId: p.danh_muc_id ?? p.danh_muc?.id,
+                            categoryName: p.danh_muc?.ten ?? "",
+                            categorySlug: p.danh_muc?.duong_dan ?? "",
+                            price: hasSale ? salePrice : originalPrice,
+                            oldPrice: hasSale ? originalPrice : 0,
+                            image: getImageUrl(p.hinh_anh_url || p.hinh_anh),
+                            stock: Number(p.so_luong_ton ?? 0),
+                            description: p.mo_ta ?? "",
+                            rating: Number(
+                                p.rating ??
+                                p.danh_gia_trung_binh ??
+                                p.average_rating ??
+                                0
+                            ),
+                            reviews: Number(p.reviews ?? 0),
+                            sold: Number(p.sold ?? 0),
+                        };
+                    });
 
-            // Kiểm tra xem dữ liệu và các thành phần cần thiết
-            // đã sẵn sàng hay chưa.
-            if (
-                // Chưa có danh sách sản phẩm
-                !products ||
-
-                // Chưa có hàm renderProductCard
-                typeof renderProductCard !== "function" ||
-
-                // Chưa tìm thấy khu vực hiển thị sản phẩm
-                !productGrid
-            ) {
-
-                // Nếu chưa sẵn sàng thì chờ 150ms
-                // rồi thử lại hàm renderProducts().
-                //
-                // Điều này hữu ích vì data.js / main.js có thể
-                // chưa load xong khi React vừa render trang.
-                window.setTimeout(renderProducts, 150);
-
-                // Dừng lần chạy hiện tại.
-                return;
+                setProducts(activeProducts);
+            } catch (err) {
+                console.error("Loi lay san pham:", err);
+                if (!cancelled) {
+                    setError("Không thể tải danh sách sản phẩm. Vui lòng thử lại.");
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
             }
+        }
 
+        loadProducts();
 
-            // Khi dữ liệu đã sẵn sàng:
-            //
-            // products.map(renderProductCard)
-            //
-            // sẽ chạy renderProductCard() cho từng sản phẩm.
-            //
-            // Ví dụ:
-            // products = [product1, product2, product3]
-            //
-            // sẽ trở thành:
-            // [
-            //     "<div>Product 1...</div>",
-            //     "<div>Product 2...</div>",
-            //     "<div>Product 3...</div>"
-            // ]
-            //
-            // .join("") sẽ nối tất cả HTML thành một chuỗi.
-            productGrid.innerHTML = products
-                .map(renderProductCard)
-                .join("");
-
-
-            // Tìm phần tử hiển thị số lượng sản phẩm.
-            //
-            // Ví dụ HTML:
-            // <p id="product-count-label">
-            //     Hiển thị 24 sản phẩm chính hãng
-            // </p>
-            const productCount =
-                document.getElementById("product-count-label");
-
-
-            // Nếu tìm thấy phần tử product-count-label
-            // thì cập nhật nội dung của nó.
-            if (productCount) {
-
-                // products.length = tổng số sản phẩm
-                //
-                // Ví dụ có 24 sản phẩm:
-                // "Hiển thị 24 sản phẩm chính hãng"
-                productCount.textContent =
-                    `Hiển thị ${products.length} sản phẩm chính hãng`;
-            }
-
-
-            // Khởi tạo lại các icon Lucide
-            // sau khi HTML sản phẩm vừa được thêm vào DOM.
-            //
-            // Dấu ?. giúp không bị lỗi nếu lucide chưa tồn tại.
-            window.lucide?.createIcons();
-
-
-            // Cập nhật trạng thái wishlist / sản phẩm yêu thích.
-            //
-            // Nếu hàm updateWishlistUI tồn tại thì gọi nó.
-            // Nếu chưa tồn tại thì bỏ qua, không báo lỗi.
-            window.updateWishlistUI?.();
-        };
-
-
-        // Gọi hàm renderProducts() lần đầu tiên.
-        // Đây là lúc bắt đầu lấy và hiển thị sản phẩm.
-        renderProducts();
-
-
-        // Cleanup function của useEffect.
-        //
-        // Hàm này chạy khi component bị unmount
-        // hoặc trước khi effect được chạy lại.
         return () => {
-
-            // Đánh dấu component đã bị hủy.
-            //
-            // Những lần renderProducts() được gọi sau đó
-            // sẽ gặp:
-            //
-            // if (cancelled) return;
-            //
-            // và dừng lại.
             cancelled = true;
         };
-
-
-        // [] nghĩa là useEffect chỉ chạy một lần
-        // sau khi component được render lần đầu.
     }, []);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadCategories() {
+            try {
+                const response = await getAllCategories();
+
+                const body = response?.data ?? response;
+                const list = Array.isArray(body)
+                    ? body
+                    : Array.isArray(body?.data)
+                        ? body.data
+                        : [];
+
+                if (!cancelled) {
+                    setCategories(
+                        list.filter(
+                            (category) =>
+                                Number(category.trang_thai ?? 1) === 1
+                        )
+                    );
+                }
+            } catch (error) {
+                console.error("Lỗi lấy danh mục:", error);
+
+                if (!cancelled) {
+                    setCategories([]);
+                }
+            }
+        }
+
+        loadCategories();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // Tao danh sach danh muc va so luong tu du lieu san pham
 
 
-    // ==========================================
-    // CÁC HÀM GỌI JAVASCRIPT CŨ TRONG main.js
-    // ==========================================
+    
+    // Loc va sap xep san pham
+    const filteredProducts = useMemo(() => {
+        let result = [...products];
+
+        // Loc san pham theo tu khoa tim kiem
+        const keyword = normalizeText(searchTerm);
+
+        if (keyword) {
+            result = result.filter((product) => {
+                const searchableText = normalizeText(
+                    [
+                        product.name,
+                        product.brand,
+                        product.categoryName,
+                        product.categorySlug,
+                    ]
+                        .filter(Boolean)
+                        .join(" ")
+                );
+
+                return searchableText.includes(keyword);
+            });
+        }
+
+        // Loc san pham theo danh muc
+        if (selectedCategory !== "all") {
+            result = result.filter((product) =>
+                matchesCategoryFilter(product, selectedCategory)
+            );
+        }
+
+        // Loc san pham theo gia
+        if (selectedPrice === "0-5") {
+            result = result.filter((p) => p.price < 5_000_000);
+        } else if (selectedPrice === "5-15") {
+            result = result.filter(
+                (p) => p.price >= 5_000_000 && p.price <= 15_000_000
+            );
+        } else if (selectedPrice === "15-30") {
+            result = result.filter(
+                (p) => p.price > 15_000_000 && p.price <= 30_000_000
+            );
+        } else if (selectedPrice === "30+") {
+            result = result.filter((p) => p.price > 30_000_000);
+        }
+
+        // Loc san pham theo thuong hieu
+        if (selectedBrand !== "all") {
+            result = result.filter(
+                (p) =>
+                    normalizeText(p.brand) === normalizeText(selectedBrand)
+            );
+        }
+
+        // Loc san pham theo danh gia
+        if (selectedRating > 0) {
+            result = result.filter((p) => p.rating >= selectedRating);
+        }
+
+        // Sap xep san pham
+        switch (sortBy) {
+            case "price-asc":
+                result.sort((a, b) => a.price - b.price);
+                break;
+
+            case "price-desc":
+                result.sort((a, b) => b.price - a.price);
+                break;
+
+            case "rating-desc":
+                result.sort((a, b) => b.rating - a.rating);
+                break;
+
+            case "sales-desc":
+                result.sort((a, b) => b.sold - a.sold);
+                break;
+
+            default:
+                result.sort((a, b) => b.id - a.id);
+        }
+
+        return result;
+    }, [
+        products,
+        searchTerm,
+        selectedCategory,
+        selectedPrice,
+        selectedBrand,
+        selectedRating,
+        sortBy,
+    ]);
+
+
+    
+
+    // Tinh phan trang tu danh sach da loc
+    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+    const safePage = Math.min(currentPage, Math.max(totalPages, 1));
+
+    const paginatedProducts = filteredProducts.slice(
+        (safePage - 1) * productsPerPage,
+        safePage * productsPerPage
+    );
+
+
+    // Dat lai tat ca bo loc
+    const resetFilters = () => {
+        setSelectedCategory("all");
+        setSelectedPrice("all");
+        setSelectedBrand("all");
+        setSelectedRating(0);
+        setSortBy("default");
+        setCurrentPage(1);
+    };
 
     const handleResetFilters = () => {
-        window.resetFilters?.();
+        resetFilters();
     };
 
+    // Chon danh muc
     const handleSetCategory = (category) => {
-        window.setFilter?.("category", category);
+        setSelectedCategory(category);
+        setCurrentPage(1);
     };
 
+    // Chon khoang gia
     const handleSetPrice = (price) => {
-        window.setPriceFilter?.(price);
+        setSelectedPrice(price);
+        setCurrentPage(1);
     };
 
+    // Chon thuong hieu
     const handleSetBrand = (brand) => {
-        window.setBrandFilter?.(brand);
+        setSelectedBrand(brand);
+        setCurrentPage(1);
     };
 
+    // Chon muc danh gia
     const handleSetRating = (rating) => {
-        window.setRatingFilter?.(rating);
+        setSelectedRating(Number(rating));
+        setCurrentPage(1);
     };
 
+    // Sap xep san pham
     const handleSorting = (value) => {
-        window.applySorting?.(value);
+        setSortBy(value);
+        setCurrentPage(1);
     };
+
+
+    // Dinh dang gia tien VND
+    const formatPrice = (price) =>
+        new Intl.NumberFormat("vi-VN").format(price) + " đ";
+
+    // Phan JSX giao dien hien tai se duoc cap nhat o buoc tiep theo
+
 
     return (
         <>
@@ -301,19 +526,23 @@ export default function Products() {
                                         </span>
                                     </button>
 
+
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            handleSetCategory("headphone")
-                                        }
+                                        onClick={() => handleSetCategory("headphone")}
                                         className="cat-filter-btn w-full text-left px-3 py-2 rounded-xl font-medium flex items-center justify-between transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                                         data-cat="headphone"
                                     >
                                         <span>🎧 Tai nghe</span>
                                         <span className="text-[11px] opacity-75">
-                                            3
+                                            {products.filter(
+                                                (product) =>
+                                                    normalizeText(product.categoryName).includes("tai nghe") ||
+                                                    normalizeText(product.categorySlug).includes("tai-nghe")
+                                            ).length}
                                         </span>
                                     </button>
+
 
                                     <button
                                         type="button"
@@ -644,12 +873,9 @@ export default function Products() {
                                     Tất cả sản phẩm
                                 </h1>
 
-                                <p
-                                    className="text-xs text-slate-500 mt-0.5"
-                                    id="product-count-label"
-                                >
-                                    Hiển thị 24 sản phẩm chính hãng
-                                </p>
+                                {loading
+                                    ? "Đang tải sản phẩm..."
+                                    : `Hiển thị ${filteredProducts.length} sản phẩm`}
 
                             </div>
 
@@ -690,13 +916,107 @@ export default function Products() {
                             </div>
                         </div>
 
+
                         {/* Products Grid */}
                         <div
                             id="shop-product-grid"
                             className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-h-[400px]"
                         >
-                            {/* Products được render bằng main.js */}
+                            {loading ? (
+                                <p className="col-span-full text-center py-16 text-slate-500">
+                                    Đang tải sản phẩm...
+                                </p>
+                            ) : error ? (
+                                <div className="col-span-full text-center py-16">
+                                    <p className="text-red-500 text-sm">{error}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => window.location.reload()}
+                                        className="mt-4 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold"
+                                    >
+                                        Thử lại
+                                    </button>
+                                </div>
+                            ) : paginatedProducts.length > 0 ? (
+                                paginatedProducts.map((product) => (
+                                    <article
+                                        key={product.id}
+                                        className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                                    >
+                                        <Link href={`products/${product.id}`}>
+                                            <div className="aspect-square bg-slate-50 dark:bg-slate-800 p-4 flex items-center justify-center">
+                                                {product.image ? (
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">
+                                                        Chưa có hình ảnh
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </Link>
+
+                                        <div className="p-4 space-y-2">
+                                            {product.brand && (
+                                                <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                                                    {product.brand}
+                                                </p>
+                                            )}
+
+                                            <Link href={`products/${product.id}`}>
+                                                <h3 className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-2 hover:text-blue-600">
+                                                    {product.name}
+                                                </h3>
+                                            </Link>
+
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                                                    {formatPrice(product.price)}
+                                                </span>
+
+                                                {product.oldPrice > 0 && (
+                                                    <span className="text-xs text-slate-400 line-through">
+                                                        {formatPrice(product.oldPrice)}
+                                                    </span>
+                                                )}
+                                            </div>
+
+
+                                            <p className="text-xs text-slate-500">
+                                                {product.stock > 0
+                                                    ? `Còn ${product.stock} sản phẩm`
+                                                    : "Hết hàng"}
+                                            </p>
+
+                                            <button
+                                                type="button"
+                                                disabled={product.stock <= 0}
+                                                onClick={() => handleAddToCart(product)}
+                                                className="w-full mt-2 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
+                                            >
+                                                {product.stock > 0 ? (
+                                                    <>
+                                                        <span className="mr-1">🛒</span>
+                                                        Thêm vào giỏ hàng
+                                                    </>
+                                                ) : (
+                                                    "Hết hàng"
+                                                )}
+                                            </button>
+
+                                        </div>
+                                    </article>
+                                ))
+                            ) : (
+                                <p className="col-span-full text-center py-16 text-slate-500 text-sm">
+                                    Không tìm thấy sản phẩm phù hợp.
+                                </p>
+                            )}
                         </div>
+
 
                         {/* Empty State */}
                         <div
@@ -733,40 +1053,50 @@ export default function Products() {
                         </div>
 
                         {/* Pagination */}
-                        <div
-                            className="flex items-center justify-center gap-2 pt-6 pb-2"
-                            id="shop-pagination"
-                        >
-
-                            <button
-                                type="button"
-                                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        {totalPages > 1 && (
+                            <div
+                                className="flex items-center justify-center gap-2 pt-6 pb-2"
+                                id="shop-pagination"
                             >
-                                ← Trước
-                            </button>
+                                <button
+                                    type="button"
+                                    disabled={safePage === 1}
+                                    onClick={() =>
+                                        setCurrentPage((page) => Math.max(1, page - 1))
+                                    }
+                                    className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+                                >
+                                    ← Trước
+                                </button>
 
-                            <button
-                                type="button"
-                                className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold text-xs"
-                            >
-                                1
-                            </button>
+                                {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                                    (page) => (
+                                        <button
+                                            key={page}
+                                            type="button"
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`w-9 h-9 rounded-xl font-bold text-xs ${safePage === page
+                                                ? "bg-blue-600 text-white"
+                                                : "border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    )
+                                )}
 
-                            <button
-                                type="button"
-                                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                                2
-                            </button>
-
-                            <button
-                                type="button"
-                                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                                Sau →
-                            </button>
-
-                        </div>
+                                <button
+                                    type="button"
+                                    disabled={safePage >= totalPages}
+                                    onClick={() =>
+                                        setCurrentPage((page) => Math.min(totalPages, page + 1))
+                                    }
+                                    className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
+                                >
+                                    Sau →
+                                </button>
+                            </div>
+                        )}
 
                     </section>
                 </div>

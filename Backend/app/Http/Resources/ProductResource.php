@@ -21,12 +21,12 @@ class ProductResource extends JsonResource
             'ten' => $this->ten,
             'product_name' => $this->ten,
             'duong_dan' => $this->duong_dan,
-            'slug' => $this->duong_dan,  
+            'slug' => $this->duong_dan,
 
             'gia' => $this->gia,
-            'price' => $this->gia,     
+            'price' => $this->gia,
             'gia_khuyen_mai' => $this->gia_khuyen_mai,
-            'sale_price' => $this->gia_khuyen_mai, 
+            'sale_price' => $this->gia_khuyen_mai,
 
             'so_luong_ton' => $this->so_luong_ton,
             'qty' => $this->so_luong_ton,
@@ -47,6 +47,19 @@ class ProductResource extends JsonResource
 
             // Thông tin thương hiệu nếu được load
             'thuong_hieu' => $this->whenLoaded('thuongHieu'),
+
+
+
+            // Danh sach anh phu cua san pham
+            'hinh_anh_phu' => $this->whenLoaded('images', function () {
+                return $this->images->map(function ($image) {
+                    return [
+                        'id' => $image->id,
+                        'image_path' => $image->image_path,
+                        'image_url' => asset('storage/' . $image->image_path),
+                    ];
+                })->values();
+            }),
         ];
     }
 }

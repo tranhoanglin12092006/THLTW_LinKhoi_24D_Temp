@@ -108,9 +108,9 @@ class OrderController extends Controller
         $order = Order::findOrFail($id);
 
         // Don da huy hoac da giao thi khong cho cap nhat
-        if (in_array((int) $order->trang_thai, [3, 4], true)) {
+        if (in_array((int) $order->trang_thai, [2,3, 4], true)) {
             return response()->json([
-                'message' => 'Don hang da giao hoac da huy, khong the cap nhat.'
+                'message' => 'Don hang dang giao, da giao hoac da huy, khong the cap nhat.'
             ], 422);
         }
 

@@ -19,8 +19,11 @@ class ProductController extends Controller
         // Số sản phẩm hiển thị trên mỗi trang.
         $perPage = max(1, min((int) request()->get('per_page', 10), 1000));
 
-        $query = Product::with(['danhMuc', 'thuongHieu'])->orderBy('id', 'desc');
-
+        $query = Product::with([
+            'danhMuc',
+            'thuongHieu',
+            'images',
+        ])->orderBy('id', 'desc');
         // Nếu có yêu cầu chỉ lấy sản phẩm đang hoạt động (ví dụ trang shop công khai)
         if (request()->boolean('active_only')) {
             $query->where('trang_thai', 1);
@@ -44,9 +47,11 @@ class ProductController extends Controller
     public function show($id)
     {
         try {
-            $product = Product::with(['danhMuc', 'thuongHieu'])
-                ->findOrFail($id);
-
+            $product = Product::with([
+                'danhMuc',
+                'thuongHieu',
+                'images',
+            ])->findOrFail($id);
             return new ProductResource($product);
         } catch (\Exception $e) {
             return response()->json([
@@ -228,7 +233,7 @@ class ProductController extends Controller
         $limit = (int) $limit;
 
         $products = Product::where('trang_thai', 1)
-            ->with(['danhMuc', 'thuongHieu'])
+            ->with(['danhMuc', 'thuongHieu', 'images'])
             ->orderBy('created_at', 'desc')
             ->orderBy('id', 'desc')
             ->take($limit)
@@ -247,7 +252,7 @@ class ProductController extends Controller
 
         // Ưu tiên sản phẩm có tồn kho nhiều hoặc sắp xếp mới nhất
         $products = Product::where('trang_thai', 1)
-            ->with(['danhMuc', 'thuongHieu'])
+            ->with(['danhMuc', 'thuongHieu','images'])
             ->orderBy('so_luong_ton', 'desc')
             ->orderBy('id', 'desc')
             ->take($limit)
@@ -268,7 +273,7 @@ class ProductController extends Controller
             ->whereNotNull('gia_khuyen_mai')
             ->where('gia_khuyen_mai', '>', 0)
             ->whereColumn('gia_khuyen_mai', '<', 'gia')
-            ->with(['danhMuc', 'thuongHieu'])
+            ->with(['danhMuc', 'thuongHieu','images'])
             ->orderBy('id', 'desc')
             ->take($limit)
             ->get();

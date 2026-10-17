@@ -10,6 +10,8 @@ import {
     deleteProduct,
     restoreProduct,
     forceDeleteProduct,
+    uploadProductImages,
+    deleteProductImage,
 } from "@/services/productServices";
 
 import { getAllCategories } from "@/services/categoryServices";
@@ -117,36 +119,92 @@ export default function ProductsPage() {
         setShowModal(true);
     };
 
-    // Thêm hoặc sửa sản phẩm
-    const handleSubmit = async (formData) => {
+
+    // Them hoac sua san pham va tai anh phu len Backend
+
+    // Them hoac sua san pham, xoa anh cu va tai anh moi
+    const handleSubmit = async (
+        formData,
+        extraImages = [],
+        deletedImageIds = []
+    ) => {
         try {
+            let productId;
+
             if (editingProduct) {
+                // Cap nhat san pham hien tai
                 await updateProduct(editingProduct.id, formData);
-                alert("✓ Cập nhật sản phẩm thành công!");
+                productId = editingProduct.id;
             } else {
-                await createProduct(formData);
-                alert("✓ Thêm sản phẩm thành công!");
+                // Tao san pham moi
+                const res = await createProduct(formData);
+
+                // Lay ID tu du lieu API tra ve
+                const savedProduct =
+                    res?.data?.data?.product ||
+                    res?.data?.product ||
+                    res?.data?.data ||
+                    res?.data;
+
+                productId =
+                    savedProduct?.id ||
+                    savedProduct?.product?.id;
             }
 
+            if (!productId) {
+                throw new Error(
+                    "Khong lay duoc ID san pham tu API."
+                );
+            }
+
+            // Xoa han cac anh cu khoi database va Storage
+            const uniqueImageIds = [...new Set(
+                deletedImageIds.map(Number).filter(id => Number.isInteger(id) && id > 0)
+            )];
+
+            for (const imageId of uniqueImageIds) {
+                await deleteProductImage(productId, imageId);
+            }
+
+            // Tai cac anh phu moi len Backend
+            if (extraImages.length > 0) {
+                const files = extraImages.map((item) =>
+                    item instanceof File ? item : item.file
+                ).filter((file) => file instanceof File);
+
+                if (files.length > 0) {
+                    await uploadProductImages(productId, files);
+                }
+            }
+
+            alert(
+                editingProduct
+                    ? "Cap nhat san pham thanh cong!"
+                    : "Them san pham thanh cong!"
+            );
+
+            // Dong form va tai lai danh sach
             setShowModal(false);
             setEditingProduct(null);
             await loadProducts();
         } catch (error) {
-            console.error("LỖI CẬP NHẬT:", error);
+            console.error("LOI LUU SAN PHAM:", error);
             console.error("STATUS:", error.response?.status);
             console.error("DATA:", error.response?.data);
-            console.error("ERRORS:", error.response?.data?.errors);
 
             const message =
                 error.response?.data?.message ||
                 Object.values(error.response?.data?.errors || {})
                     .flat()
                     .join("\n") ||
-                "Không thể lưu sản phẩm!";
+                error.message ||
+                "Khong the luu san pham!";
 
             alert(message);
         }
     };
+
+
 
     // Xóa sản phẩm
     const handleDelete = async (id) => {
@@ -332,8 +390,8 @@ export default function ProductsPage() {
                 </p>
             </div>
 
-        
-            
+
+
 
 
 

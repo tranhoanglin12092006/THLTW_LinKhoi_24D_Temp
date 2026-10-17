@@ -158,7 +158,7 @@ export default function OrderTable({
 
                                 // Don da giao hoac da huy thi khong doi trang thai
                                 const isFinalStatus =
-                                    trangThai === 3 || trangThai === 4;
+                                    trangThai === 2 || trangThai === 3 || trangThai === 4;
 
                                 return (
                                     <tr

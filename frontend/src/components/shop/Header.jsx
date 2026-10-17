@@ -1,38 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+import { usePathname } from "next/navigation";
 import Link from "next/link";
+import SearchBox from "./SearchBox";
 
 export default function Header() {
     const [cartCount, setCartCount] = useState(0);
+    const pathname = usePathname();
 
     useEffect(() => {
-        const updateCount = () => {
-            try {
-                const stored = localStorage.getItem("technova_cart");
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed)) {
-                        const total = parsed.reduce((sum, item) => sum + (item.quantity || 1), 0);
-                        setCartCount(total);
-                        return;
-                    }
-                }
-                setCartCount(0);
-            } catch (e) {
+        try {
+            const stored = localStorage.getItem("technova_cart");
+            const cart = stored ? JSON.parse(stored) : [];
+
+            if (Array.isArray(cart)) {
+                const total = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                setCartCount(total);
+            } else {
                 setCartCount(0);
             }
-        };
-
-        updateCount();
-        window.addEventListener("cartUpdated", updateCount);
-        window.addEventListener("storage", updateCount);
-        return () => {
-            window.removeEventListener("cartUpdated", updateCount);
-            window.removeEventListener("storage", updateCount);
-        };
-    }, []);
+        } catch (e) {
+            setCartCount(0);
+        }
+    }, [pathname]);
 
     return (
         <>
@@ -92,7 +83,7 @@ export default function Header() {
                             >
                                 <i data-lucide="menu" className="w-6 h-6" />
                             </button>
-                            <a href="index.html" className="flex items-center gap-2.5 group">
+                            <Link href="/" className="flex items-center gap-2.5 group">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
                                     <i data-lucide="cpu" className="w-6 h-6" />
                                 </div>
@@ -105,31 +96,14 @@ export default function Header() {
                                         Premium Electronics
                                     </span>
                                 </div>
-                            </a>
+                            </Link>
                         </div>
                         {/* Main Search Bar */}
                         <div className="flex-1 max-w-2xl hidden md:block relative">
-                            <form className="header-search-form relative flex items-center">
-                                <div className="relative w-full">
-                                    <i
-                                        data-lucide="search"
-                                        className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Tìm kiếm iPhone 16, MacBook, tai nghe chống ồn, PS5..."
-                                        className="search-autocomplete-input w-full pl-11 pr-24 py-2.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:text-white placeholder-slate-400 transition-all"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all active:scale-95"
-                                    >
-                                        Tìm kiếm
-                                    </button>
-                                </div>
-                                {/* Live Search Results Dropdown */}
-                                <div className="search-results-dropdown hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden" />
-                            </form>
+                            <SearchBox
+                                variant="desktop"
+                                placeholder="Tìm kiếm iPhone 16, MacBook, tai nghe chống ồn, PS5..."
+                            />
                         </div>
                         {/* Action Buttons: Wishlist, Account, Cart */}
                         <div className="flex items-center gap-1 sm:gap-2">
@@ -225,24 +199,7 @@ export default function Header() {
                     </div>
                     {/* Mobile Search Bar in Header */}
                     <div className="mt-3 md:hidden">
-                        <form className="header-search-form relative flex items-center">
-                            <input
-                                type="text"
-                                placeholder="Tìm sản phẩm điện tử..."
-                                className="search-autocomplete-input w-full pl-10 pr-20 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 dark:text-white"
-                            />
-                            <i
-                                data-lucide="search"
-                                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                            />
-                            <button
-                                type="submit"
-                                className="absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg"
-                            >
-                                Tìm
-                            </button>
-                            <div className="search-results-dropdown hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden" />
-                        </form>
+                        <SearchBox variant="mobile" placeholder="Tìm sản phẩm điện tử..." />
                     </div>
                 </div>
                 {/* ========================================================================== */}
@@ -402,7 +359,7 @@ export default function Header() {
                         </div>
                     </div>
                 </nav>
-            </header>
+            </header >
             {/* ========================================================================== */}
             {/* MOBILE NAVIGATION DRAWER */}
             {/* ========================================================================== */}

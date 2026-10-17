@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,6 +11,9 @@ export default function ProductForm({
     onSubmit,
     onClose,
 }) {
+    const [extraImages, setExtraImages] = useState([]);
+    const [deletedImageIds, setDeletedImageIds] = useState([]);
+
     const [form, setForm] = useState({
         danh_muc_id: "",
         thuong_hieu_id: "",
@@ -23,30 +27,49 @@ export default function ProductForm({
         trang_thai: 1,
     });
 
-    // Nếu sửa sản phẩm thì đưa dữ liệu cũ vào form
+    // Dua thong tin san pham cu vao form khi sua
     useEffect(() => {
+        setExtraImages([]);
+        setDeletedImageIds([]);
+
         if (product) {
             setForm({
                 danh_muc_id: product.danh_muc_id || "",
                 thuong_hieu_id: product.thuong_hieu_id || "",
                 ten: product.ten || "",
                 duong_dan: product.duong_dan || "",
-                // "350000.00" -> 350000 (bỏ phần thập phân thừa)
-                gia: product.gia ? Math.round(Number(product.gia)) : "",
+                gia: product.gia
+                    ? Math.round(Number(product.gia))
+                    : "",
                 gia_khuyen_mai: product.gia_khuyen_mai
                     ? Math.round(Number(product.gia_khuyen_mai))
                     : "",
                 so_luong_ton: product.so_luong_ton || "",
                 mo_ta: product.mo_ta || "",
                 hinh_anh: null,
-                // Backend trả true/false -> đổi sang số 1/0
-                // (cũng giúp ô chọn "Đang bán / Ngừng bán" hiển thị đúng)
-                trang_thai: product.trang_thai === false || product.trang_thai === 0 ? 0 : 1,
+                trang_thai:
+                    product.trang_thai === false ||
+                        product.trang_thai === 0
+                        ? 0
+                        : 1,
+            });
+        } else {
+            setForm({
+                danh_muc_id: "",
+                thuong_hieu_id: "",
+                ten: "",
+                duong_dan: "",
+                gia: "",
+                gia_khuyen_mai: "",
+                so_luong_ton: "",
+                mo_ta: "",
+                hinh_anh: null,
+                trang_thai: 1,
             });
         }
     }, [product]);
 
-    // Tạo slug từ tên sản phẩm
+    // Tao slug tu ten san pham
     const createSlug = (value) => {
         return value
             .toLowerCase()
@@ -58,9 +81,7 @@ export default function ProductForm({
             .replace(/\s+/g, "-");
     };
 
-    
-
-    // Xử lý thay đổi input
+    // Xu ly thay doi input
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -70,7 +91,7 @@ export default function ProductForm({
         }));
     };
 
-    // Nhập tên thì tự tạo slug
+    // Tu tao slug khi nhap ten san pham
     const handleNameChange = (e) => {
         const value = e.target.value;
 
@@ -81,7 +102,7 @@ export default function ProductForm({
         }));
     };
 
-    // Nhận file ảnh
+    // Nhan anh dai dien moi
     const handleImageChange = (file) => {
         setForm((prev) => ({
             ...prev,
@@ -89,7 +110,21 @@ export default function ProductForm({
         }));
     };
 
-    // Gửi form
+    // Danh dau anh cu can xoa
+    const handleDeleteOldImage = (imageId) => {
+        const id = Number(imageId);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            console.error("ID anh cu khong hop le:", imageId);
+            return;
+        }
+
+        setDeletedImageIds((prev) =>
+            prev.includes(id) ? prev : [...prev, id]
+        );
+    };
+
+    // Gui thong tin san pham va danh sach anh len component cha
     const handleSubmit = (e) => {
         e.preventDefault();
 
@@ -103,40 +138,35 @@ export default function ProductForm({
         formData.append("gia_khuyen_mai", form.gia_khuyen_mai);
         formData.append("so_luong_ton", form.so_luong_ton);
         formData.append("mo_ta", form.mo_ta);
-        // Select trả về chuỗi "1" hoặc "0"
-        // Number() đổi sang số, rồi gửi đúng 1 hoặc 0 cho Laravel
-        formData.append("trang_thai", Number(form.trang_thai) ? 1 : 0);
+        formData.append(
+            "trang_thai",
+            Number(form.trang_thai) ? 1 : 0
+        );
 
-        // Chỉ gửi ảnh một lần
+        // Chi gui anh dai dien neu chon anh moi
         if (form.hinh_anh instanceof File) {
             formData.append("hinh_anh", form.hinh_anh);
         }
 
-        // Kiểm tra dữ liệu gửi lên
-        console.log("===== FORM DATA =====");
+        console.log("Danh sach anh phu moi:", extraImages);
+        console.log("ID anh cu can xoa:", deletedImageIds);
 
-        for (const [key, value] of formData.entries()) {
-            console.log(key, value);
-        }
-
-        onSubmit(formData);
+        // Gui du lieu cho component cha xu ly
+        onSubmit(formData, extraImages, deletedImageIds);
     };
 
-    // Class dùng chung cho input
     const inputClass =
         "w-full rounded-xl border border-white/[0.08] bg-[#1a1d3b] px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none";
 
-    // Class dùng chung cho label
     const labelClass =
         "mb-1.5 block text-xs font-semibold text-slate-300";
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Tên sản phẩm */}
+            {/* Ten san pham */}
             <div>
                 <label className={labelClass}>
-                    Tên sản phẩm{" "}
-                    <span className="text-red-400">*</span>
+                    Ten san pham <span className="text-red-400">*</span>
                 </label>
 
                 <input
@@ -144,16 +174,15 @@ export default function ProductForm({
                     value={form.ten}
                     onChange={handleNameChange}
                     required
-                    placeholder="Nhập tên sản phẩm..."
+                    placeholder="Nhap ten san pham..."
                     className={inputClass}
                 />
             </div>
 
-            {/* Đường dẫn */}
+            {/* Duong dan */}
             <div>
                 <label className={labelClass}>
-                    Đường dẫn (Slug){" "}
-                    <span className="text-red-400">*</span>
+                    Duong dan (Slug) <span className="text-red-400">*</span>
                 </label>
 
                 <input
@@ -167,12 +196,11 @@ export default function ProductForm({
                 />
             </div>
 
-            {/* Danh mục + thương hiệu */}
+            {/* Danh muc va thuong hieu */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                     <label className={labelClass}>
-                        Danh mục{" "}
-                        <span className="text-red-400">*</span>
+                        Danh muc <span className="text-red-400">*</span>
                     </label>
 
                     <select
@@ -182,15 +210,10 @@ export default function ProductForm({
                         required
                         className={`${inputClass} cursor-pointer`}
                     >
-                        <option value="">
-                            — Chọn danh mục —
-                        </option>
+                        <option value="">— Chon danh muc —</option>
 
                         {categories.map((category) => (
-                            <option
-                                key={category.id}
-                                value={category.id}
-                            >
+                            <option key={category.id} value={category.id}>
                                 {category.ten}
                             </option>
                         ))}
@@ -199,8 +222,7 @@ export default function ProductForm({
 
                 <div>
                     <label className={labelClass}>
-                        Thương hiệu{" "}
-                        <span className="text-red-400">*</span>
+                        Thuong hieu <span className="text-red-400">*</span>
                     </label>
 
                     <select
@@ -210,15 +232,10 @@ export default function ProductForm({
                         required
                         className={`${inputClass} cursor-pointer`}
                     >
-                        <option value="">
-                            — Chọn thương hiệu —
-                        </option>
+                        <option value="">— Chon thuong hieu —</option>
 
                         {brands.map((brand) => (
-                            <option
-                                key={brand.id}
-                                value={brand.id}
-                            >
+                            <option key={brand.id} value={brand.id}>
                                 {brand.ten}
                             </option>
                         ))}
@@ -226,12 +243,11 @@ export default function ProductForm({
                 </div>
             </div>
 
-            {/* Giá + giá khuyến mãi + tồn kho */}
+            {/* Gia va so luong */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                     <label className={labelClass}>
-                        Giá{" "}
-                        <span className="text-red-400">*</span>
+                        Gia <span className="text-red-400">*</span>
                     </label>
 
                     <input
@@ -247,9 +263,7 @@ export default function ProductForm({
                 </div>
 
                 <div>
-                    <label className={labelClass}>
-                        Giá khuyến mãi
-                    </label>
+                    <label className={labelClass}>Gia khuyen mai</label>
 
                     <input
                         type="number"
@@ -264,8 +278,7 @@ export default function ProductForm({
 
                 <div>
                     <label className={labelClass}>
-                        Số lượng tồn{" "}
-                        <span className="text-red-400">*</span>
+                        So luong ton <span className="text-red-400">*</span>
                     </label>
 
                     <input
@@ -281,39 +294,37 @@ export default function ProductForm({
                 </div>
             </div>
 
-            {/* Hình ảnh */}
+            {/* Hinh anh */}
             <div>
-                <label className={labelClass}>
-                    Hình ảnh
-                </label>
+                <label className={labelClass}>Hinh anh</label>
 
                 <ProductImage
+                    key={product?.id ?? "new"}
                     currentImage={product?.hinh_anh}
+                    currentExtraImages={product?.hinh_anh_phu || []}
                     onChange={handleImageChange}
+                    onImagesChange={setExtraImages}
+                    onDeleteOldImage={handleDeleteOldImage}
                 />
             </div>
 
-            {/* Mô tả */}
+            {/* Mo ta */}
             <div>
-                <label className={labelClass}>
-                    Mô tả
-                </label>
+                <label className={labelClass}>Mo ta</label>
 
                 <textarea
                     name="mo_ta"
                     value={form.mo_ta}
                     onChange={handleChange}
                     rows="4"
-                    placeholder="Nhập mô tả sản phẩm..."
+                    placeholder="Nhap mo ta san pham..."
                     className={`${inputClass} resize-none`}
                 />
             </div>
 
-            {/* Trạng thái */}
+            {/* Trang thai */}
             <div>
-                <label className={labelClass}>
-                    Trạng thái
-                </label>
+                <label className={labelClass}>Trang thai</label>
 
                 <select
                     name="trang_thai"
@@ -321,33 +332,26 @@ export default function ProductForm({
                     onChange={handleChange}
                     className={`${inputClass} cursor-pointer`}
                 >
-                    <option value="1">
-                        🟢 Đang bán
-                    </option>
-
-                    <option value="0">
-                        🔴 Ngừng bán
-                    </option>
+                    <option value="1">Dang ban</option>
+                    <option value="0">Ngung ban</option>
                 </select>
             </div>
 
-            {/* Nút */}
+            {/* Nut thao tac */}
             <div className="flex items-center justify-end gap-3 border-t border-white/[0.08] pt-4">
                 <button
                     type="button"
                     onClick={onClose}
                     className="rounded-xl border border-white/[0.1] px-4 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/[0.05] hover:text-white"
                 >
-                    Hủy
+                    Huy
                 </button>
 
                 <button
                     type="submit"
                     className="rounded-xl bg-violet-600 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-violet-600/25 transition-all hover:bg-violet-500"
                 >
-                    {product
-                        ? "Lưu thay đổi"
-                        : "Tạo sản phẩm"}
+                    {product ? "Luu thay doi" : "Tao san pham"}
                 </button>
             </div>
         </form>

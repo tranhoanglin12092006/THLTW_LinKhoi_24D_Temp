@@ -14,6 +14,7 @@ use App\Http\Controllers\OrderDetailController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProductImageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -22,33 +23,33 @@ Route::get('/user', function (Request $request) {
 
 // Route::middleware('auth:sanctum')->group(function () {
 
-    // Route::middleware('is.admin')->group(function () {
+// Route::middleware('is.admin')->group(function () {
 
-    // API thong ke Dashboard
-        Route::get('/dashboard', [DashboardController::class, 'index']);
-        
-        Route::get('/categories', [CategoryController::class, 'index']);
-        Route::post('/categories', [CategoryController::class, 'store']);
-        Route::get('/category/{id}', [CategoryController::class, 'show']);
-        Route::put('/category/{id}', [CategoryController::class, 'update']);
-        Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
+// API thong ke Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index']);
 
-        Route::get('/brands', [BrandController::class, 'index']);
-        Route::post('/brands', [BrandController::class, 'store']);
-        Route::get('/brand/{id}', [BrandController::class, 'show']);
-        Route::put('/brand/{id}', [BrandController::class, 'update']);
-        Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
+Route::get('/categories', [CategoryController::class, 'index']);
+Route::post('/categories', [CategoryController::class, 'store']);
+Route::get('/category/{id}', [CategoryController::class, 'show']);
+Route::put('/category/{id}', [CategoryController::class, 'update']);
+Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
 
-        // API sản phẩm
-        Route::get('/products', [ProductController::class, 'index']);
-        Route::post('/products', [ProductController::class, 'store']);
-        Route::get('/products/trash', [ProductController::class, 'trash']);
-        Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
-        Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']);
-        Route::get('/products/{id}', [ProductController::class, 'show']);
-        Route::put('/products/{id}', [ProductController::class, 'update']);
-        Route::delete('/products/{id}', [ProductController::class, 'destroy']);
-    // });
+Route::get('/brands', [BrandController::class, 'index']);
+Route::post('/brands', [BrandController::class, 'store']);
+Route::get('/brand/{id}', [BrandController::class, 'show']);
+Route::put('/brand/{id}', [BrandController::class, 'update']);
+Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
+
+// API sản phẩm
+Route::get('/products', [ProductController::class, 'index']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::get('/products/trash', [ProductController::class, 'trash']);
+Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
+Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']);
+Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+// });
 // });
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
@@ -179,6 +180,11 @@ Route::delete('/menus/{id}', [MenuController::class, 'destroy']);
 Route::post('/menus/{id}/restore', [MenuController::class, 'restore']);
 Route::delete('/menus/{id}/force', [MenuController::class, 'forceDestroy']);
 
+// API quan ly anh phu san pham
+Route::get('/products/{productId}/images', [ProductImageController::class, 'index']);
+Route::post('/products/{productId}/images', [ProductImageController::class, 'store']);
+Route::delete('/products/{productId}/images/{imageId}', [ProductImageController::class, 'destroy']);
+
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
@@ -197,6 +203,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Đổi mật khẩu
     Route::post('/change-password', [ApiUserController::class, 'changePassword']);
+
+
 
 
     // ==================================================

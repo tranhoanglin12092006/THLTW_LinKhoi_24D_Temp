@@ -16,7 +16,7 @@ class MenuController extends Controller
             min((int) request()->get('per_page', 10), 1000)
         );
 
-        $query = Menu::orderBy('thu_tu', 'asc');
+        $query = Menu::orderBy('thu_tu', 'desc');
 
         // Tim kiem theo ten menu
         if (request()->filled('search')) {

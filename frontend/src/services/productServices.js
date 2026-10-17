@@ -149,3 +149,38 @@ export async function forceDeleteProduct(id) {
         throw error;
     }
 }
+
+
+/**
+ * Tai nhieu anh phu len san pham
+ * productId: ID cua san pham
+ * files: Danh sach file anh nguoi dung da chon
+ */
+export async function uploadProductImages(productId, files) {
+    // Tao FormData de gui file anh len Backend
+    const formData = new FormData();
+
+    // Them tung anh vao FormData theo ten truong Backend yeu cau
+    Array.from(files).forEach((file) => {
+        formData.append("images[]", file);
+    });
+
+    // Goi API de luu cac anh phu cho san pham
+    return axiosClient.post(
+        `/products/${productId}/images`,
+        formData
+    );
+}
+
+/**
+ * Xoa mot anh phu cua san pham
+ * productId: ID san pham
+ * imageId: ID anh phu can xoa
+ */
+export async function deleteProductImage(productId, imageId) {
+    // Goi API xoa anh phu theo ID san pham va ID anh
+    return axiosClient.delete(
+        `/products/${productId}/images/${imageId}`
+    );
+}
+

@@ -6,15 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+
+
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
-    
 
-    // Tên bảng trong database
+    // Ten bang san pham
     protected $table = 'san_pham';
 
-    // Các cột được phép thêm hoặc cập nhật
+    // Cac cot duoc phep them hoac cap nhat
     protected $fillable = [
         'danh_muc_id',
         'thuong_hieu_id',
@@ -28,7 +29,7 @@ class Product extends Model
         'trang_thai',
     ];
 
-    // Kiểu dữ liệu của các cột
+    // Kieu du lieu cua cac cot
     protected $casts = [
         'gia' => 'decimal:2',
         'gia_khuyen_mai' => 'decimal:2',
@@ -36,12 +37,12 @@ class Product extends Model
         'trang_thai' => 'boolean',
     ];
 
-    // Thêm URL hình ảnh vào dữ liệu trả về
+    // Them URL anh chinh vao du lieu tra ve
     protected $appends = [
         'hinh_anh_url',
     ];
 
-    // Lấy URL hình ảnh
+    // Lay URL anh chinh
     public function getHinhAnhUrlAttribute()
     {
         if (!$this->hinh_anh) {
@@ -51,27 +52,34 @@ class Product extends Model
         return asset('storage/' . $this->hinh_anh);
     }
 
-    // Quan hệ với danh mục
+    // Quan he voi danh muc
     public function danhMuc()
     {
         return $this->belongsTo(Category::class, 'danh_muc_id');
     }
 
-    // Quan hệ với thương hiệu
+    // Quan he voi thuong hieu
     public function thuongHieu()
     {
         return $this->belongsTo(Brand::class, 'thuong_hieu_id');
     }
 
-    // Quan hệ với chi tiết đơn hàng
+    // Quan he voi chi tiet don hang
     public function chiTietDonHangs()
     {
         return $this->hasMany(OrderDetail::class, 'san_pham_id');
     }
 
-    // Quan hệ với chi tiết giỏ hàng
+    // Quan he voi chi tiet gio hang
     public function chiTietGioHangs()
     {
         return $this->hasMany(CartItem::class, 'san_pham_id');
     }
+
+    // Quan he voi nhieu anh phu cua san pham
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class, 'product_id');
+    }
 }
+
