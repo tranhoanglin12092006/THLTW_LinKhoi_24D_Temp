@@ -308,7 +308,7 @@ export default function Header() {
                         <div className="flex items-center justify-center text-sm py-1.5 relative">
                             <div className="flex items-center justify-center gap-1 xl:gap-2">
                                 <a
-                                    href="index.html"
+                                    href="/"
                                     className="px-3.5 py-2 rounded-xl font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 transition-colors"
                                 >
                                     Trang chủ
