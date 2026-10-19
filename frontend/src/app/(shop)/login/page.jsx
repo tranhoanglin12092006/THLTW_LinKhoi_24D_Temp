@@ -118,7 +118,7 @@ export default function LoginPage() {
             }
 
             // Bắn event để Header lập tức cập nhật thông tin người dùng
-            window.dispatchEvent(new Event("userUpdated"));
+            window.dispatchEvent(new Event("userUpdated")); 
 
             // Thông báo thành công
             const userName = response?.user?.ho_ten || "bạn";

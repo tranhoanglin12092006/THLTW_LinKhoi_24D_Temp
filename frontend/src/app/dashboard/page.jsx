@@ -11,6 +11,7 @@ import RecentOrders from "@/components/dashboard/RecentOrders";
 
 
 import { getDashboardData } from "@/services/dashboardServices";
+import AdminGuard from "@/components/admin/AdminGuard";
 
 export default function DashboardPage() {
     // Luu du lieu Dashboard tu API
@@ -55,13 +56,14 @@ export default function DashboardPage() {
     };
 
     return (
-        <div
-            className="min-h-screen bg-[#090b14] text-white"
-            style={{
-                background:
-                    "radial-gradient(circle at top right, #151a32 0%, #090b14 45%)",
-            }}
-        >
+        <AdminGuard>
+            <div
+                className="min-h-screen bg-[#090b14] text-white"
+                style={{
+                    background:
+                        "radial-gradient(circle at top right, #151a32 0%, #090b14 45%)",
+                }}
+            >
             {/* Thanh menu ben trai */}
             <Sidebar />
 
@@ -222,5 +224,6 @@ export default function DashboardPage() {
                 </section>
             </main>
         </div>
+        </AdminGuard>
     );
 }
