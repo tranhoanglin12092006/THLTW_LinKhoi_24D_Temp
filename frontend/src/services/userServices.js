@@ -149,3 +149,37 @@ export async function loginUser(data) {
         throw error;
     }
 }
+
+// 12. Lấy thông tin tài khoản đang đăng nhập (GET /api/me)
+export async function getMe() {
+    try {
+        const res = await axiosClient.get("/me");
+        return res;
+    } catch (error) {
+        console.error("Lỗi lấy thông tin cá nhân:", error);
+        throw error;
+    }
+}
+
+// 13. Cập nhật thông tin cá nhân (PUT /api/profile)
+export async function updateProfile(data) {
+    try {
+        const res = await axiosClient.put("/profile", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi cập nhật thông tin cá nhân:", error);
+        throw error;
+    }
+}
+
+// 14. Đổi mật khẩu tài khoản (POST /api/change-password)
+export async function changePassword(data) {
+    try {
+        const res = await axiosClient.post("/change-password", data);
+        return res;
+    } catch (error) {
+        console.error("Lỗi đổi mật khẩu:", error);
+        throw error;
+    }
+}
+

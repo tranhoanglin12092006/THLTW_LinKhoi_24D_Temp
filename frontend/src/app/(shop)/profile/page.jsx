@@ -1,57 +1,231 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getMe, updateProfile, changePassword, logoutUser } from "@/services/authServices";
 import { formatCurrency } from "@/utils/formatCurrency";
 
+/**
+ * =========================================================================
+ * TRANG QUẢN LÝ THÔNG TIN TÀI KHOẢN & CẬP NHẬT PROFILE
+ * Bám sát cấu trúc folder tranhoanglin-frontend
+ * 
+ * Chức năng:
+ * 1. Lấy thông tin user đăng nhập từ API Backend (GET /api/me)
+ * 2. Cập nhật hồ sơ cá nhân (PUT /api/profile): Họ tên, số điện thoại, địa chỉ
+ * 3. Đồng bộ lại dữ liệu user lưu trong localStorage & kích hoạt sự kiện Header
+ * 4. Đổi mật khẩu tài khoản (POST /api/change-password)
+ * 5. Đăng xuất tài khoản an toàn
+ * =========================================================================
+ */
 export default function ProfilePage() {
-    // 1. Quản lý tab hoạt động
-    const [activeTab, setActiveTab] = useState("info"); // "info" | "orders" | "security" | "vip"
+    const router = useRouter();
 
-    // 2. State thông tin cá nhân tĩnh
-    const [userInfo, setUserInfo] = useState({
-        name: "Nguyễn Văn An",
-        email: "nguyenvanan@gmail.com",
-        phone: "0987 654 321",
-        gender: "male",
-        birthdate: "1998-09-12",
-        city: "TP. Hồ Chí Minh",
-        address: "128 Đường Hai Bà Trưng, Phường Bến Nghé, Quận 1",
+    // 1. Quản lý tab hoạt động: "info" | "orders" | "security" | "vip"
+    const [activeTab, setActiveTab] = useState("info");
+
+    // 2. Trạng thái tải dữ liệu
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
+    // 3. State thông tin người dùng
+    const [formData, setFormData] = useState({
+        ho_ten: "",
+        email: "",
+        so_dien_thoai: "",
+        dia_chi: "",
+        vai_tro: "member",
     });
 
-    // 3. State đổi mật khẩu tĩnh
-    const [passwords, setPasswords] = useState({
-        current: "",
-        newPass: "",
-        confirmPass: "",
+    // 4. State đổi mật khẩu
+    const [passwordForm, setPasswordForm] = useState({
+        mat_khau_cu: "",
+        mat_khau_moi: "",
+        mat_khau_moi_confirmation: "",
     });
 
-    // 4. Thông báo Toast
-    const [toastMessage, setToastMessage] = useState("");
+    // 5. Thông báo Toast Popup
+    const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
-    const showToast = (msg) => {
-        setToastMessage(msg);
-        setTimeout(() => setToastMessage(""), 3500);
+    const showToast = (message, type = "success") => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
     };
 
-    // Xử lý lưu thông tin
-    const handleSaveProfile = (e) => {
-        e.preventDefault();
-        showToast("✓ Đã lưu thay đổi thông tin cá nhân thành công!");
+    // 6. Lấy thông tin user khi vừa vào trang (GET /api/me)
+    const fetchUserData = async () => {
+        try {
+            setLoading(true);
+
+            // Kiểm tra token trước, nếu chưa đăng nhập thì chuyển về trang login
+            const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+            if (!token) {
+                router.push("/login");
+                return;
+            }
+
+            // Gọi API lấy dữ liệu user mới nhất từ máy chủ
+            const res = await getMe();
+            const user = res?.user || res?.data || res;
+
+            if (user) {
+                setFormData({
+                    ho_ten: user.ho_ten || user.name || "",
+                    email: user.email || "",
+                    so_dien_thoai: user.so_dien_thoai || user.phone || "",
+                    dia_chi: user.dia_chi || user.address || "",
+                    vai_tro: user.vai_tro || "member",
+                });
+
+                // Cập nhật lại localStorage để các component khác (như Header) đồng bộ
+                localStorage.setItem("user", JSON.stringify(user));
+                window.dispatchEvent(new Event("userUpdated"));
+            }
+        } catch (error) {
+            console.error("Lỗi lấy thông tin user:", error);
+
+            // Nếu token hết hạn hoặc lỗi 401 thì yêu cầu đăng nhập lại
+            if (error.response?.status === 401) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("admin_token");
+                localStorage.removeItem("user");
+                router.push("/login");
+            } else {
+                // Thử đọc từ localStorage dự phòng nếu mất mạng
+                const storedUser = localStorage.getItem("user");
+                if (storedUser) {
+                    const u = JSON.parse(storedUser);
+                    setFormData({
+                        ho_ten: u.ho_ten || u.name || "",
+                        email: u.email || "",
+                        so_dien_thoai: u.so_dien_thoai || u.phone || "",
+                        dia_chi: u.dia_chi || u.address || "",
+                        vai_tro: u.vai_tro || "member",
+                    });
+                }
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // Xử lý cập nhật mật khẩu
-    const handleChangePassword = (e) => {
+    useEffect(() => {
+        fetchUserData();
+    }, []);
+
+    // 7. Xử lý lưu cập nhật hồ sơ cá nhân (PUT /api/profile)
+    const handleSaveProfile = async (e) => {
         e.preventDefault();
-        if (passwords.newPass !== passwords.confirmPass) {
-            alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+
+        if (!formData.ho_ten.trim()) {
+            showToast("Vui lòng nhập họ và tên của bạn!", "error");
             return;
         }
-        showToast("✓ Cập nhật mật khẩu bảo mật mới thành công!");
-        setPasswords({ current: "", newPass: "", confirmPass: "" });
+
+        try {
+            setSaving(true);
+
+            const payload = {
+                ho_ten: formData.ho_ten.trim(),
+                so_dien_thoai: formData.so_dien_thoai?.trim() || null,
+                dia_chi: formData.dia_chi?.trim() || null,
+            };
+
+            // Gọi API cập nhật thông tin cá nhân
+            const res = await updateProfile(payload);
+            const updatedUser = res?.user || res?.data || res;
+
+            // Cập nhật lại state & localStorage
+            if (updatedUser) {
+                // Giữ lại email và các trường khác
+                const newUserData = {
+                    ...JSON.parse(localStorage.getItem("user") || "{}"),
+                    ...updatedUser,
+                };
+                localStorage.setItem("user", JSON.stringify(newUserData));
+                window.dispatchEvent(new Event("userUpdated"));
+            }
+
+            showToast("✓ Cập nhật thông tin cá nhân thành công!", "success");
+        } catch (error) {
+            console.error("Lỗi khi cập nhật profile:", error);
+            const errMsg = error.response?.data?.message || "Cập nhật hồ sơ thất bại. Vui lòng thử lại!";
+            showToast(errMsg, "error");
+        } finally {
+            setSaving(false);
+        }
     };
 
-    // Mock danh sách đơn hàng tĩnh
+    // 8. Xử lý đổi mật khẩu (POST /api/change-password)
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+
+        if (!passwordForm.mat_khau_cu) {
+            showToast("Vui lòng nhập mật khẩu hiện tại!", "error");
+            return;
+        }
+
+        if (passwordForm.mat_khau_moi.length < 8) {
+            showToast("Mật khẩu mới phải có ít nhất 8 ký tự!", "error");
+            return;
+        }
+
+        if (passwordForm.mat_khau_moi !== passwordForm.mat_khau_moi_confirmation) {
+            showToast("Mật khẩu mới và xác nhận mật khẩu không khớp!", "error");
+            return;
+        }
+
+        try {
+            setPasswordLoading(true);
+
+            const payload = {
+                mat_khau_cu: passwordForm.mat_khau_cu,
+                mat_khau_moi: passwordForm.mat_khau_moi,
+                mat_khau_moi_confirmation: passwordForm.mat_khau_moi_confirmation,
+            };
+
+            const res = await changePassword(payload);
+            showToast(res?.message || "✓ Đổi mật khẩu thành công!", "success");
+
+            // Xóa trắng form đổi mật khẩu
+            setPasswordForm({
+                mat_khau_cu: "",
+                mat_khau_moi: "",
+                mat_khau_moi_confirmation: "",
+            });
+        } catch (error) {
+            console.error("Lỗi khi đổi mật khẩu:", error);
+            const errMsg = error.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ!";
+            showToast(errMsg, "error");
+        } finally {
+            setPasswordLoading(false);
+        }
+    };
+
+    // 9. Xử lý đăng xuất
+    const handleLogout = async () => {
+        if (!window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) return;
+
+        try {
+            await logoutUser();
+        } catch (err) {
+            console.error("Lỗi khi gọi logout:", err);
+        } finally {
+            // Xóa sạch token và dữ liệu trong localStorage
+            localStorage.removeItem("token");
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("user");
+
+            window.dispatchEvent(new Event("userUpdated"));
+            router.push("/login");
+        }
+    };
+
+    // Mock danh sách đơn hàng mẫu
     const mockOrders = [
         {
             id: "TECH-9824",
@@ -79,6 +253,18 @@ export default function ProfilePage() {
         },
     ];
 
+    // Màn hình chờ khi đang tải thông tin ban đầu
+    if (loading) {
+        return (
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center justify-center min-h-[500px]">
+                <div className="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-600 animate-spin mb-4" />
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Đang tải dữ liệu hồ sơ cá nhân...
+                </p>
+            </main>
+        );
+    }
+
     return (
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
             {/* =========================================================
@@ -94,12 +280,18 @@ export default function ProfilePage() {
                 </span>
             </nav>
 
-            {/* Thông báo Toast Popup nếu có */}
-            {toastMessage && (
+            {/* Thông báo Toast Popup */}
+            {toast.show && (
                 <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-                    <div className="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-semibold text-xs shadow-2xl shadow-emerald-600/30 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{toastMessage}</span>
+                    <div className={`px-5 py-3 rounded-2xl text-white font-semibold text-xs shadow-2xl flex items-center gap-2 ${
+                        toast.type === "error" ? "bg-red-600 shadow-red-600/30" : "bg-emerald-600 shadow-emerald-600/30"
+                    }`}>
+                        {toast.type === "error" ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
+                        <span>{toast.message}</span>
                     </div>
                 </div>
             )}
@@ -113,34 +305,32 @@ export default function ProfilePage() {
                     {/* Thẻ User Mini Card */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm text-center space-y-4">
                         
-                        {/* Avatar */}
+                        {/* Avatar chữ cái hoặc hình ảnh */}
                         <div className="relative w-24 h-24 mx-auto">
-                            <img
-                                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"
-                                alt="Avatar"
-                                className="w-full h-full object-cover rounded-full border-4 border-blue-100 dark:border-blue-900/60 shadow-lg"
-                            />
-                            <button
-                                type="button"
-                                onClick={() => showToast("✓ Đã chọn ảnh đại diện mới thành công!")}
-                                className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-md hover:scale-110 active:scale-95 transition-all"
-                                title="Đổi ảnh đại diện"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                            </button>
+                            <div className="w-full h-full rounded-full border-4 border-blue-100 dark:border-blue-900/60 shadow-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-3xl flex items-center justify-center uppercase select-none">
+                                {(formData.ho_ten || formData.email || "U").charAt(0)}
+                            </div>
                         </div>
 
-                        {/* Tên & Hạng thẻ VIP */}
+                        {/* Tên & Vai trò */}
                         <div>
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                {userInfo.name}
+                                {formData.ho_ten || "Chưa đặt tên"}
                             </h2>
                             <p className="text-xs text-slate-400 mt-0.5">
-                                {userInfo.email}
+                                {formData.email}
                             </p>
-                            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500/15 to-amber-600/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 font-bold text-[11px] rounded-full">
-                                <span>★</span>
-                                <span>VIP Diamond Member</span>
+                            
+                            <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border">
+                                {formData.vai_tro === "admin" ? (
+                                    <span className="text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20 px-2 py-0.5 rounded-full">
+                                        🛡️ Quản trị viên (Admin)
+                                    </span>
+                                ) : (
+                                    <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20 px-2 py-0.5 rounded-full">
+                                        👤 Thành viên (Member)
+                                    </span>
+                                )}
                             </div>
                         </div>
 
@@ -148,7 +338,7 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-left">
                             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                                 <span className="block text-[11px] text-slate-400 font-medium">Đơn hàng</span>
-                                <span className="text-base font-extrabold text-slate-900 dark:text-white">12 đơn</span>
+                                <span className="text-base font-extrabold text-slate-900 dark:text-white">3 đơn</span>
                             </div>
                             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                                 <span className="block text-[11px] text-slate-400 font-medium">Điểm thưởng</span>
@@ -220,11 +410,7 @@ export default function ProfilePage() {
                             <div className="pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        if (window.confirm("Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?")) {
-                                            showToast("Đã đăng xuất thành công!");
-                                        }
-                                    }}
+                                    onClick={handleLogout}
                                     className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -250,12 +436,12 @@ export default function ProfilePage() {
                                         Hồ sơ thông tin tài khoản
                                     </h1>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                        Quản lý tên hiển thị, số điện thoại và địa chỉ giao hàng nhận mặc định
+                                        Quản lý tên hiển thị, số điện thoại và địa chỉ nhận hàng mặc định của bạn
                                     </p>
                                 </div>
                                 <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    Tài khoản đã xác thực
+                                    Tài khoản đã kích hoạt
                                 </span>
                             </div>
 
@@ -269,8 +455,9 @@ export default function ProfilePage() {
                                         <input
                                             type="text"
                                             required
-                                            value={userInfo.name}
-                                            onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+                                            value={formData.ho_ten}
+                                            onChange={(e) => setFormData({ ...formData, ho_ten: e.target.value })}
+                                            placeholder="Nhập họ và tên..."
                                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                                         />
                                     </div>
@@ -284,7 +471,7 @@ export default function ProfilePage() {
                                             <input
                                                 type="email"
                                                 readOnly
-                                                value={userInfo.email}
+                                                value={formData.email}
                                                 className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-sm text-slate-400 cursor-not-allowed"
                                             />
                                             <span className="absolute right-3 top-3 text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
@@ -298,34 +485,28 @@ export default function ProfilePage() {
                                     {/* Số điện thoại */}
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                                            Số điện thoại liên hệ <span className="text-red-500">*</span>
+                                            Số điện thoại liên hệ
                                         </label>
                                         <input
                                             type="tel"
-                                            required
-                                            value={userInfo.phone}
-                                            onChange={(e) => setUserInfo({ ...userInfo, phone: e.target.value })}
+                                            value={formData.so_dien_thoai || ""}
+                                            onChange={(e) => setFormData({ ...formData, so_dien_thoai: e.target.value })}
+                                            placeholder="Ví dụ: 0987654321"
                                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                                         />
                                     </div>
 
-                                    {/* Tỉnh / Thành phố */}
+                                    {/* Vai trò */}
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                                            Tỉnh / Thành phố <span className="text-red-500">*</span>
+                                            Loại tài khoản
                                         </label>
-                                        <select
-                                            value={userInfo.city}
-                                            onChange={(e) => setUserInfo({ ...userInfo, city: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
-                                        >
-                                            <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-                                            <option value="Hà Nội">Hà Nội</option>
-                                            <option value="Đà Nẵng">Đà Nẵng</option>
-                                            <option value="Cần Thơ">Cần Thơ</option>
-                                            <option value="Hải Phòng">Hải Phòng</option>
-                                            <option value="Bình Dương">Bình Dương</option>
-                                        </select>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={formData.vai_tro === "admin" ? "Quản trị viên (Admin)" : "Khách hàng (Member)"}
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-sm text-slate-400 cursor-not-allowed"
+                                        />
                                     </div>
                                 </div>
 
@@ -336,9 +517,9 @@ export default function ProfilePage() {
                                     </label>
                                     <input
                                         type="text"
-                                        value={userInfo.address}
-                                        onChange={(e) => setUserInfo({ ...userInfo, address: e.target.value })}
-                                        placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
+                                        value={formData.dia_chi || ""}
+                                        onChange={(e) => setFormData({ ...formData, dia_chi: e.target.value })}
+                                        placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
                                     />
                                 </div>
@@ -346,10 +527,20 @@ export default function ProfilePage() {
                                 <div className="pt-3 flex justify-end">
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-500/25 transition-all active:scale-95 flex items-center gap-2"
+                                        disabled={saving}
+                                        className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-blue-500/25 transition-all active:scale-95 flex items-center gap-2"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                        Lưu thay đổi thông tin
+                                        {saving ? (
+                                            <>
+                                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span>Đang lưu...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                <span>Lưu thay đổi thông tin</span>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -424,7 +615,7 @@ export default function ProfilePage() {
                                     Đổi mật khẩu bảo mật
                                 </h2>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                    Khuyên dùng mật khẩu mạnh trên 8 ký tự gồm chữ hoa, chữ số và ký tự đặc biệt
+                                    Khuyên dùng mật khẩu mạnh từ 8 ký tự trở lên để bảo vệ tài khoản tốt nhất
                                 </p>
                             </div>
 
@@ -437,8 +628,8 @@ export default function ProfilePage() {
                                         type="password"
                                         required
                                         placeholder="Nhập mật khẩu đang dùng..."
-                                        value={passwords.current}
-                                        onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                                        value={passwordForm.mat_khau_cu}
+                                        onChange={(e) => setPasswordForm({ ...passwordForm, mat_khau_cu: e.target.value })}
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-mono"
                                     />
                                 </div>
@@ -452,8 +643,8 @@ export default function ProfilePage() {
                                             type="password"
                                             required
                                             placeholder="Ít nhất 8 ký tự..."
-                                            value={passwords.newPass}
-                                            onChange={(e) => setPasswords({ ...passwords, newPass: e.target.value })}
+                                            value={passwordForm.mat_khau_moi}
+                                            onChange={(e) => setPasswordForm({ ...passwordForm, mat_khau_moi: e.target.value })}
                                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-mono"
                                         />
                                     </div>
@@ -465,8 +656,8 @@ export default function ProfilePage() {
                                             type="password"
                                             required
                                             placeholder="Nhập lại mật khẩu mới..."
-                                            value={passwords.confirmPass}
-                                            onChange={(e) => setPasswords({ ...passwords, confirmPass: e.target.value })}
+                                            value={passwordForm.mat_khau_moi_confirmation}
+                                            onChange={(e) => setPasswordForm({ ...passwordForm, mat_khau_moi_confirmation: e.target.value })}
                                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-mono"
                                         />
                                     </div>
@@ -475,9 +666,17 @@ export default function ProfilePage() {
                                 <div className="pt-3 flex justify-end">
                                     <button
                                         type="submit"
-                                        className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                                        disabled={passwordLoading}
+                                        className="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-2"
                                     >
-                                        Cập nhật mật khẩu mới
+                                        {passwordLoading ? (
+                                            <>
+                                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                <span>Đang cập nhật...</span>
+                                            </>
+                                        ) : (
+                                            <span>Cập nhật mật khẩu mới</span>
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -493,7 +692,7 @@ export default function ProfilePage() {
                                         Hạng Thẻ Đặc Quyền
                                     </span>
                                     <h2 className="text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-2">
-                                        <span>VIP Diamond Club</span>
+                                        <span>VIP Member Club</span>
                                         <span className="text-amber-500">💎</span>
                                     </h2>
                                 </div>
@@ -503,7 +702,7 @@ export default function ProfilePage() {
                             </div>
 
                             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                                Chúc mừng bạn là một trong những khách hàng thân thiết bậc nhất tại TECHNOVA. Dưới đây là các đặc quyền dành riêng cho bạn:
+                                Chúc mừng bạn là khách hàng thân thiết tại TECHNOVA. Dưới đây là các đặc quyền dành riêng cho bạn:
                             </p>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -514,8 +713,8 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-amber-500/20 backdrop-blur-sm space-y-1">
                                     <span className="text-xl">🚀</span>
-                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">Freeship Trọn Đời</h3>
-                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Miễn phí giao hàng hỏa tốc toàn quốc không giới hạn.</p>
+                                    <h3 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">Freeship Toàn Quốc</h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Miễn phí giao hàng hỏa tốc cho mọi đơn hàng.</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-amber-500/20 backdrop-blur-sm space-y-1">
                                     <span className="text-xl">🔄</span>
