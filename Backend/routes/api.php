@@ -14,7 +14,8 @@ use App\Http\Controllers\OrderDetailController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProductImageController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\PageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -23,34 +24,10 @@ Route::get('/user', function (Request $request) {
 
 // Route::middleware('auth:sanctum')->group(function () {
 
-// Route::middleware('is.admin')->group(function () {
+    // Route::middleware('is.admin')->group(function () {
 
-// API thong ke Dashboard
-Route::get('/dashboard', [DashboardController::class, 'index']);
-
-Route::get('/categories', [CategoryController::class, 'index']);
-Route::post('/categories', [CategoryController::class, 'store']);
-Route::get('/category/{id}', [CategoryController::class, 'show']);
-Route::put('/category/{id}', [CategoryController::class, 'update']);
-Route::delete('/category/{id}', [CategoryController::class, 'destroy']);
-
-Route::get('/brands', [BrandController::class, 'index']);
-Route::post('/brands', [BrandController::class, 'store']);
-Route::get('/brand/{id}', [BrandController::class, 'show']);
-Route::put('/brand/{id}', [BrandController::class, 'update']);
-Route::delete('/brand/{id}', [BrandController::class, 'destroy']);
-
-// API sản phẩm
-Route::get('/products', [ProductController::class, 'index']);
-Route::post('/products', [ProductController::class, 'store']);
-Route::get('/products/trash', [ProductController::class, 'trash']);
-Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
-Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']);
-Route::get('/products/{id}', [ProductController::class, 'show']);
-Route::put('/products/{id}', [ProductController::class, 'update']);
-Route::delete('/products/{id}', [ProductController::class, 'destroy']);
-// });
-// });
+    // API thong ke Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
 
@@ -72,9 +49,17 @@ Route::delete('/brands/{id}', [BrandController::class, 'destroy']);
 Route::put('/brands/{id}/restore', [BrandController::class, 'restore']);
 Route::delete('/brands/{id}/force', [BrandController::class, 'forceDelete']);
 
-// ==================== API SẢN PHẨM (PUBLIC CHO SHOP) ====================
+// ==================== API SẢN PHẨM ====================
 Route::get('/products', [ProductController::class, 'index']);
+Route::post('/products', [ProductController::class, 'store']);
+Route::get('/products/trash', [ProductController::class, 'trash']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+Route::put('/products/{id}', [ProductController::class, 'update']);
+Route::post('/products/{id}', [ProductController::class, 'update']);
+Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+Route::post('/products/{id}/restore', [ProductController::class, 'restore']);
+Route::put('/products/{id}/restore', [ProductController::class, 'restore']);
+Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']);
 Route::get('/newProducts/{limit?}', [ProductController::class, 'getNewProducts']);
 Route::get('/hotProducts/{limit?}', [ProductController::class, 'getHotProducts']);
 Route::get('/saleProducts/{limit?}', [ProductController::class, 'getSaleProducts']);
@@ -180,11 +165,22 @@ Route::delete('/menus/{id}', [MenuController::class, 'destroy']);
 Route::post('/menus/{id}/restore', [MenuController::class, 'restore']);
 Route::delete('/menus/{id}/force', [MenuController::class, 'forceDestroy']);
 
-// API quan ly anh phu san pham
-Route::get('/products/{productId}/images', [ProductImageController::class, 'index']);
-Route::post('/products/{productId}/images', [ProductImageController::class, 'store']);
-Route::delete('/products/{productId}/images/{imageId}', [ProductImageController::class, 'destroy']);
+// ==================== API CẤU HÌNH HỆ THỐNG (SETTINGS) ====================
+Route::get('/settings', [SettingController::class, 'index']);
+Route::post('/settings', [SettingController::class, 'updateBulk']);
+Route::get('/settings/{khoa}', [SettingController::class, 'show']);
+Route::put('/settings/{khoa}', [SettingController::class, 'updateSingle']);
 
+// ==================== API TRANG ĐƠN (PAGES) ====================
+Route::get('/pages', [PageController::class, 'index']);
+Route::post('/pages', [PageController::class, 'store']);
+Route::get('/pages/trash', [PageController::class, 'trash']);
+Route::get('/pages/{id}', [PageController::class, 'show']);
+Route::put('/pages/{id}', [PageController::class, 'update']);
+Route::delete('/pages/{id}', [PageController::class, 'destroy']);
+Route::put('/pages/{id}/restore', [PageController::class, 'restore']);
+Route::post('/pages/{id}/restore', [PageController::class, 'restore']);
+Route::delete('/pages/{id}/force', [PageController::class, 'forceDelete']);
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
@@ -203,8 +199,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Đổi mật khẩu
     Route::post('/change-password', [ApiUserController::class, 'changePassword']);
-
-
 
 
     // ==================================================
