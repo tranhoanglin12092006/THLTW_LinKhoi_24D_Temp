@@ -13,32 +13,31 @@ class OrderRequest extends FormRequest
     }
 
     // Kiểm tra dữ liệu đơn hàng
-    public function rules(): array
-    {
+    // Kiem tra du lieu don hang
+public function rules(): array
+{
+    // Khach dat hang: chi gui thong tin nhan hang
+    if ($this->isMethod('post')) {
         return [
-            // ID người dùng, có thể để trống
-            'nguoi_dung_id' => 'nullable|exists:nguoi_dung,id',
-
-            // Tên người nhận
             'ten_nguoi_nhan' => 'required|string|max:255',
-
-            // Số điện thoại
             'so_dien_thoai' => 'required|string|max:20',
-
-            // Địa chỉ giao hàng
             'dia_chi' => 'required|string|max:255',
-
-            // Phương thức thanh toán
             'phuong_thuc_thanh_toan' => 'required|string|max:100',
-
-            // Mã khuyến mãi, có thể để trống
             'khuyen_mai_id' => 'nullable|exists:khuyen_mai,id',
-
-            // Tổng tiền
-            'tong_tien' => 'required|numeric|min:0',
-
-            // Trạng thái đơn hàng
-            'trang_thai' => 'required|string|max:50',
+            'session_id' => 'nullable|string|min:32|max:100',
         ];
     }
+
+    // Giu quy tac cu cho cac thao tac cap nhat don hang
+    return [
+        'nguoi_dung_id' => 'nullable|exists:nguoi_dung,id',
+        'ten_nguoi_nhan' => 'required|string|max:255',
+        'so_dien_thoai' => 'required|string|max:20',
+        'dia_chi' => 'required|string|max:255',
+        'phuong_thuc_thanh_toan' => 'required|string|max:100',
+        'khuyen_mai_id' => 'nullable|exists:khuyen_mai,id',
+        'tong_tien' => 'required|numeric|min:0',
+        'trang_thai' => 'required|integer|in:0,1,2,3,4',
+    ];
+}
 }

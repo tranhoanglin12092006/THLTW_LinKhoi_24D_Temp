@@ -104,11 +104,16 @@ export default function LoginPage() {
                 localStorage.removeItem("technova_remembered_email");
             }
 
-            // Lưu Token & User vào LocalStorage (Đồng bộ với axiosClient interceptors)
+
+            // Luu Token va User vao LocalStorage.
             if (response?.token) {
                 localStorage.setItem("token", response.token);
                 localStorage.setItem("access_token", response.token);
-                if (response?.role === "admin" || response?.user?.vai_tro === "admin") {
+
+                if (
+                    response?.role === "admin" ||
+                    response?.user?.vai_tro === "admin"
+                ) {
                     localStorage.setItem("admin_token", response.token);
                 }
             }
@@ -117,8 +122,56 @@ export default function LoginPage() {
                 localStorage.setItem("user", JSON.stringify(response.user));
             }
 
+            // Xac dinh tai khoan Admin.
+            const isAdmin =
+                response?.role === "admin" ||
+                response?.user?.vai_tro === "admin";
+
+            // Gop gio hang khach vao tai khoan sau khi dang nhap.
+            const sessionId = localStorage.getItem("cart_session_id");
+
+            if (!isAdmin && response?.token && sessionId) {
+                try {
+                    const apiUrl =
+                        process.env.NEXT_PUBLIC_API_URL ||
+                        "http://localhost:8000/api";
+
+                    const mergeResponse = await fetch(
+                        `${apiUrl}/carts/merge-guest`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Accept: "application/json",
+                                Authorization: `Bearer ${response.token}`,
+                            },
+                            body: JSON.stringify({
+                                session_id: sessionId,
+                            }),
+                        }
+                    );
+
+                    if (!mergeResponse.ok) {
+                        const mergeError = await mergeResponse.json();
+                        console.error(
+                            "Gop gio hang that bai:",
+                            mergeError
+                        );
+                    }
+                } catch (mergeError) {
+                    console.error(
+                        "Khong the ket noi API gop gio hang:",
+                        mergeError
+                    );
+                }
+            }
+
+            // Bao cho Header cap nhat thong tin dang nhap.
+            window.dispatchEvent(new Event("userUpdated"));
+
+
             // Bắn event để Header lập tức cập nhật thông tin người dùng
-            window.dispatchEvent(new Event("userUpdated")); 
+            window.dispatchEvent(new Event("userUpdated"));
 
             // Thông báo thành công
             const userName = response?.user?.ho_ten || "bạn";
@@ -126,9 +179,17 @@ export default function LoginPage() {
 
             // Tự động điều hướng theo quyền hạn (Admin chuyển về dashboard, Khách chuyển về trang chủ)
             setTimeout(() => {
-                const isAdmin = response?.role === "admin" || response?.user?.vai_tro === "admin";
                 if (isAdmin) {
                     router.push("/dashboard");
+                    return;
+                }
+
+                // Neu dang nhap tu trang thanh toan, quay lai gio hang.
+                const redirectTo = new URLSearchParams(window.location.search)
+                    .get("redirect");
+
+                if (redirectTo === "/cart") {
+                    router.push("/cart");
                 } else {
                     router.push("/");
                 }
@@ -166,7 +227,7 @@ export default function LoginPage() {
                         CỘT TRÁI: GIỚI THIỆU TECHNOVA & ĐẶC QUYỀN THÀNH VIÊN
                     ========================================================================= */}
                     <div className="lg:col-span-5 hidden lg:flex flex-col justify-between p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-slate-900/95 via-indigo-950/80 to-slate-950/95 border border-white/[0.1] text-white shadow-2xl relative overflow-hidden backdrop-blur-2xl">
-                        
+
                         {/* Họa tiết trang trí ánh sao */}
                         <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
                         <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -246,7 +307,7 @@ export default function LoginPage() {
                         CỘT PHẢI: FORM ĐĂNG NHẬP CHÍNH (LOGIN FORM)
                     ========================================================================= */}
                     <div className="lg:col-span-7 bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-white/[0.08] rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden backdrop-blur-2xl flex flex-col justify-between">
-                        
+
                         {/* Header của Form */}
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
@@ -407,11 +468,10 @@ export default function LoginPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm text-white shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                                        loading
+                                    className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm text-white shadow-xl shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer ${loading
                                             ? "bg-blue-400 cursor-not-allowed opacity-80"
                                             : "bg-blue-600 hover:bg-blue-700 active:scale-[0.98] hover:shadow-blue-500/35"
-                                    }`}
+                                        }`}
                                 >
                                     {loading ? (
                                         <>

@@ -8,12 +8,32 @@ import {
     getProductDetail,
     getAllProducts,
 } from "@/services/productServices";
+import {
+    getOrCreateGuestCart,
+    addCartItem,
+} from "@/services/cartServices";
 
 // Dinh dang gia tien
 function formatPrice(price) {
     return Number(price || 0).toLocaleString("vi-VN") + " ₫";
 }
 
+// Lay ma phien gio hang cua khach vang lai
+function getSessionId() {
+    let sessionId = localStorage.getItem("cart_session_id");
+
+    if (!sessionId) {
+        sessionId =
+            typeof crypto !== "undefined" &&
+            typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID().replaceAll("-", "")
+                : `${Date.now()}${Math.random().toString(36).slice(2)}`;
+
+        localStorage.setItem("cart_session_id", sessionId);
+    }
+
+    return sessionId;
+}
 // Lay danh sach san pham tu response API
 function getProductArray(response) {
     const data = response?.data ?? response;
@@ -249,8 +269,103 @@ export default function ProductDetailPage() {
     }
 
     // Them san pham vao gio hang bang localStorage
-    function addToCart(buyNow = false) {
-        if (!product) return;
+    // function addToCart(buyNow = false) {
+    //     if (!product) return;
+
+    //     const stock = Number(
+    //         product.so_luong_ton ?? product.qty ?? 0
+    //     );
+
+    //     if (stock <= 0) {
+    //         showNotice("Sản phẩm hiện đã hết hàng.", "error");
+    //         return;
+    //     }
+
+    //     if (quantity < 1 || quantity > stock) {
+    //         showNotice("Số lượng mua không hợp lệ.", "error");
+    //         return;
+    //     }
+
+    //     setAddingToCart(true);
+
+    //     try {
+    //         const savedCart = localStorage.getItem("cartItems");
+    //         const cart = savedCart ? JSON.parse(savedCart) : [];
+
+    //         if (!Array.isArray(cart)) {
+    //             throw new Error("Dữ liệu giỏ hàng không hợp lệ.");
+    //         }
+
+    //         const existingIndex = cart.findIndex(
+    //             (item) => String(item.id) === String(product.id)
+    //         );
+
+    //         if (existingIndex >= 0) {
+    //             const newQuantity =
+    //                 Number(cart[existingIndex].quantity || 0) + quantity;
+
+    //             if (newQuantity > stock) {
+    //                 showNotice(
+    //                     `Số lượng trong giỏ không thể vượt quá ${stock}.`,
+    //                     "error"
+    //                 );
+    //                 return;
+    //             }
+
+    //             cart[existingIndex] = {
+    //                 ...cart[existingIndex],
+    //                 quantity: newQuantity,
+    //             };
+    //         } else {
+    //             cart.push({
+    //                 id: product.id,
+    //                 ten: product.ten || product.product_name,
+    //                 name: product.ten || product.product_name,
+    //                 gia: product.gia ?? product.price ?? 0,
+    //                 gia_khuyen_mai:
+    //                     product.gia_khuyen_mai ??
+    //                     product.sale_price ??
+    //                     0,
+    //                 hinh_anh_url:
+    //                     product.hinh_anh_url ||
+    //                     product.hinh_anh ||
+    //                     product.image ||
+    //                     "",
+    //                 image:
+    //                     product.hinh_anh_url ||
+    //                     product.hinh_anh ||
+    //                     product.image ||
+    //                     "",
+    //                 quantity,
+    //             });
+    //         }
+
+    //         localStorage.setItem("cartItems", JSON.stringify(cart));
+
+    //         // Bao cho cac component cung trang biet gio hang da thay doi
+    //         window.dispatchEvent(new Event("cartUpdated"));
+
+    //         if (buyNow) {
+    //             router.push("/cart");
+    //             return;
+    //         }
+
+    //         showNotice("Đã thêm sản phẩm vào giỏ hàng!");
+    //     } catch (error) {
+    //         console.error("Lỗi cập nhật giỏ hàng:", error);
+    //         showNotice(
+    //             "Không thể cập nhật giỏ hàng. Vui lòng thử lại.",
+    //             "error"
+    //         );
+    //     } finally {
+    //         setAddingToCart(false);
+    //     }
+    // }
+
+    
+    // Them san pham vao gio hang bang API Laravel
+    async function addToCart(buyNow = false) {
+        if (!product || addingToCart) return;
 
         const stock = Number(
             product.so_luong_ton ?? product.qty ?? 0
@@ -261,7 +376,11 @@ export default function ProductDetailPage() {
             return;
         }
 
-        if (quantity < 1 || quantity > stock) {
+        if (
+            !Number.isInteger(Number(quantity)) ||
+            Number(quantity) < 1 ||
+            Number(quantity) > stock
+        ) {
             showNotice("Số lượng mua không hợp lệ.", "error");
             return;
         }
@@ -269,60 +388,28 @@ export default function ProductDetailPage() {
         setAddingToCart(true);
 
         try {
-            const savedCart = localStorage.getItem("cartItems");
-            const cart = savedCart ? JSON.parse(savedCart) : [];
+            // Lay ma phien khach hang
+            const sessionId = getSessionId();
 
-            if (!Array.isArray(cart)) {
-                throw new Error("Dữ liệu giỏ hàng không hợp lệ.");
+            // Lay hoac tao gio hang trong database
+            const response = await getOrCreateGuestCart(sessionId);
+            const cart = response?.data;
+
+            if (!cart?.id) {
+                console.error("Du lieu gio hang:", response);
+                throw new Error("Khong lay duoc ID gio hang.");
             }
 
-            const existingIndex = cart.findIndex(
-                (item) => String(item.id) === String(product.id)
-            );
+            // Them san pham vao gio hang trong database
+            const result = await addCartItem({
+                gio_hang_id: cart.id,
+                san_pham_id: product.id,
+                so_luong: Number(quantity),
+            });
 
-            if (existingIndex >= 0) {
-                const newQuantity =
-                    Number(cart[existingIndex].quantity || 0) + quantity;
+            console.log("Ket qua them gio hang:", result);
 
-                if (newQuantity > stock) {
-                    showNotice(
-                        `Số lượng trong giỏ không thể vượt quá ${stock}.`,
-                        "error"
-                    );
-                    return;
-                }
-
-                cart[existingIndex] = {
-                    ...cart[existingIndex],
-                    quantity: newQuantity,
-                };
-            } else {
-                cart.push({
-                    id: product.id,
-                    ten: product.ten || product.product_name,
-                    name: product.ten || product.product_name,
-                    gia: product.gia ?? product.price ?? 0,
-                    gia_khuyen_mai:
-                        product.gia_khuyen_mai ??
-                        product.sale_price ??
-                        0,
-                    hinh_anh_url:
-                        product.hinh_anh_url ||
-                        product.hinh_anh ||
-                        product.image ||
-                        "",
-                    image:
-                        product.hinh_anh_url ||
-                        product.hinh_anh ||
-                        product.image ||
-                        "",
-                    quantity,
-                });
-            }
-
-            localStorage.setItem("cartItems", JSON.stringify(cart));
-
-            // Bao cho cac component cung trang biet gio hang da thay doi
+            // Cap nhat so luong gio hang tren giao dien
             window.dispatchEvent(new Event("cartUpdated"));
 
             if (buyNow) {
@@ -332,15 +419,23 @@ export default function ProductDetailPage() {
 
             showNotice("Đã thêm sản phẩm vào giỏ hàng!");
         } catch (error) {
-            console.error("Lỗi cập nhật giỏ hàng:", error);
+            console.error("Loi them gio hang:", error);
+            console.error(
+                "Phan hoi tu Laravel:",
+                error?.response?.data
+            );
+
             showNotice(
-                "Không thể cập nhật giỏ hàng. Vui lòng thử lại.",
+                error?.response?.data?.message ||
+                    error?.message ||
+                    "Không thể thêm sản phẩm vào giỏ hàng.",
                 "error"
             );
         } finally {
             setAddingToCart(false);
         }
     }
+
 
     if (loading) {
         return (

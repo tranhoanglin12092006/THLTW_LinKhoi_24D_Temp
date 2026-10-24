@@ -1,112 +1,673 @@
+
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+    getOrCreateGuestCart,
+    updateCartItem,
+    deleteCartItem,
+} from "@/services/cartServices";
 import { formatCurrency } from "@/utils/formatCurrency";
 
-// Dữ liệu sản phẩm tĩnh mẫu (Static Mock Data)
-const INITIAL_CART_ITEMS = [
-    {
-        id: 1,
-        name: "iPhone 16 Pro Max 256GB - Titan Sa Mạc Chính Hãng VN/A",
-        category: "Điện thoại",
-        slug: "iphone-16-pro-max-256gb",
-        price: 34990000,
-        originalPrice: 36990000,
-        imageUrl: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=500&q=80",
-        quantity: 1,
-        selected: true,
-    },
-    {
-        id: 2,
-        name: "Tai nghe không dây Sony WH-1000XM5 Chống ồn chủ động ANC",
-        category: "Âm thanh",
-        slug: "tai-nghe-sony-wh-1000xm5",
-        price: 7490000,
-        originalPrice: 8490000,
-        imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80",
-        quantity: 1,
-        selected: true,
-    },
-    {
-        id: 3,
-        name: "Bàn phím cơ không dây Logitech MX Mechanical Wireless Tactile",
-        category: "Phụ kiện",
-        slug: "ban-phim-logitech-mx-mechanical",
-        price: 3290000,
-        originalPrice: 3890000,
-        imageUrl: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=500&q=80",
-        quantity: 2,
-        selected: true,
-    },
-];
+// Tao ma phien rieng cho gio hang khach
+function getSessionId() {
+    let sessionId = localStorage.getItem("cart_session_id");
+
+    if (!sessionId) {
+        sessionId = typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID().replaceAll("-", "")
+            : Array.from(
+                { length: 4 },
+                () => Math.random().toString(36).slice(2)
+            ).join("");
+
+        localStorage.setItem("cart_session_id", sessionId);
+    }
+
+    return sessionId;
+}
+
+// Chuyen du lieu API thanh du lieu hien thi tren giao dien
+function mapCartItems(cart) {
+    return (cart?.chi_tiet_gio_hang || []).map((item) => {
+        const product = item.san_pham || {};
+
+        const originalPrice = Number(product.gia || product.price || 0);
+        const salePrice = Number(
+            product.gia_khuyen_mai || product.sale_price || 0
+        );
+
+        return {
+            id: item.id,
+            productId: item.san_pham_id,
+            name: product.ten || product.product_name || "San pham",
+            category: product.danh_muc?.ten || "San pham",
+            slug: product.duong_dan || product.slug || "",
+            price:
+                salePrice > 0 && salePrice < originalPrice
+                    ? salePrice
+                    : originalPrice,
+            originalPrice,
+            imageUrl:
+                product.hinh_anh_url ||
+                product.hinh_anh ||
+                product.image ||
+                "/images/no-image.png",
+            quantity: Number(item.so_luong || 1),
+            selected: true,
+        };
+    });
+}
 
 export default function Cart() {
-    // Trạng thái tĩnh tại client (không phụ thuộc LocalStorage hay API, hiển thị ngay lập tức)
-    const [cartItems, setCartItems] = useState(INITIAL_CART_ITEMS);
-    const [couponCode, setCouponCode] = useState("TECHNOVA");
-    const [isCouponApplied, setIsCouponApplied] = useState(true);
+    const router = useRouter();
 
-    // Tăng / giảm số lượng tĩnh
-    const handleUpdateQuantity = (id, delta) => {
+    const [cartItems, setCartItems] = useState([]);
+    const [cartId, setCartId] = useState(null);
+    const [sessionId, setSessionId] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
+
+    // Dieu khien cac buoc thanh toan
+    const [showCheckout, setShowCheckout] = useState(false);
+    const [orderSuccess, setOrderSuccess] = useState(false);
+    const [orderCode, setOrderCode] = useState("");
+    // Luu thong tin nguoi nhan hang
+    const [customer, setCustomer] = useState({
+        ten_nguoi_nhan: "",
+        so_dien_thoai: "",
+        dia_chi: "",
+        phuong_thuc_thanh_toan: "cod",
+    });
+
+
+    // Lay gio hang tu database khi mo trang
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadCart() {
+            try {
+                setLoading(true);
+                setErrorMessage("");
+
+                const currentSessionId = getSessionId();
+                if (cancelled) return;
+
+                setSessionId(currentSessionId);
+
+                const response =
+                    await getOrCreateGuestCart(currentSessionId);
+
+                if (cancelled) return;
+
+                const cart = response?.data;
+                const mapped = mapCartItems(cart);
+
+                setCartId(cart?.id || null);
+                setCartItems(mapped);
+
+                // Tu dong vao thanh toan khi den tu nut "Mua ngay"
+                const wantCheckout =
+                    new URLSearchParams(window.location.search).get("checkout") === "1";
+
+                if (wantCheckout) {
+                    const token =
+                        localStorage.getItem("token") ||
+                        localStorage.getItem("access_token");
+
+                    if (!token) {
+                        router.push(
+                            `/login?redirect=${encodeURIComponent("/cart?checkout=1")}`
+                        );
+                        return;
+                    }
+
+                    if (mapped.length > 0) setShowCheckout(true);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setErrorMessage(
+                        error?.response?.data?.message ||
+                        "Khong the tai gio hang. Vui long thu lai."
+                    );
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        loadCart();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    // Cap nhat so luong trong database
+    const handleUpdateQuantity = async (id, delta) => {
+        const item = cartItems.find((product) => product.id === id);
+        if (!item || processing) return;
+
+        const newQuantity = item.quantity + delta;
+        if (newQuantity < 1) return;
+
+        try {
+            setErrorMessage("");
+
+            await updateCartItem(id, {
+                gio_hang_id: cartId,
+                san_pham_id: item.productId,
+                so_luong: newQuantity,
+            });
+
+            setCartItems((prev) =>
+                prev.map((product) =>
+                    product.id === id
+                        ? { ...product, quantity: newQuantity }
+                        : product
+                )
+            );
+        } catch (error) {
+            setErrorMessage(
+                error?.response?.data?.message ||
+                "Khong the cap nhat so luong."
+            );
+        }
+    };
+
+    // Xoa mot san pham khoi database
+    const handleRemoveItem = async (id) => {
+        try {
+            setErrorMessage("");
+            await deleteCartItem(id);
+
+            setCartItems((prev) =>
+                prev.filter((item) => item.id !== id)
+            );
+        } catch (error) {
+            setErrorMessage(
+                error?.response?.data?.message ||
+                "Khong the xoa san pham."
+            );
+        }
+    };
+
+    // Chon hoac bo chon san pham tren giao dien
+    const handleToggleSelect = (id) => {
         setCartItems((prev) =>
             prev.map((item) =>
                 item.id === id
-                    ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+                    ? { ...item, selected: !item.selected }
                     : item
             )
         );
     };
 
-    // Xóa một món đồ tĩnh
-    const handleRemoveItem = (id) => {
-        setCartItems((prev) => prev.filter((item) => item.id !== id));
-    };
+    const isAllSelected =
+        cartItems.length > 0 &&
+        cartItems.every((item) => item.selected);
 
-    // Chọn / bỏ chọn món đồ tĩnh
-    const handleToggleSelect = (id) => {
+    const handleToggleSelectAll = () => {
+        const nextState = !isAllSelected;
+
         setCartItems((prev) =>
-            prev.map((item) =>
-                item.id === id ? { ...item, selected: !item.selected } : item
-            )
+            prev.map((item) => ({ ...item, selected: nextState }))
         );
     };
 
-    // Chọn / bỏ chọn tất cả
-    const isAllSelected = cartItems.length > 0 && cartItems.every((item) => item.selected);
-    const handleToggleSelectAll = () => {
-        const nextState = !isAllSelected;
-        setCartItems((prev) => prev.map((item) => ({ ...item, selected: nextState })));
+    // Xoa toan bo san pham trong gio hang
+    const handleClearCart = async () => {
+        if (processing) return;
+
+        try {
+            setErrorMessage("");
+
+            await Promise.all(
+                cartItems.map((item) => deleteCartItem(item.id))
+            );
+
+            setCartItems([]);
+        } catch (error) {
+            setErrorMessage(
+                error?.response?.data?.message ||
+                "Khong the xoa toan bo gio hang."
+            );
+        }
     };
 
-    // Xóa toàn bộ giỏ hàng tĩnh
-    const handleClearCart = () => {
-        setCartItems([]);
-    };
-
-    // Khôi phục lại dữ liệu mẫu tĩnh
-    const handleResetMockCart = () => {
-        setCartItems(INITIAL_CART_ITEMS);
-        setIsCouponApplied(true);
-    };
-
-    // Tính toán số tiền tĩnh
+    // Tinh tong tien tu cac san pham da chon
     const selectedItems = cartItems.filter((item) => item.selected);
-    const totalSelectedQty = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    const totalSelectedQty = selectedItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+    );
+
     const subtotal = selectedItems.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
     );
-    const discount = isCouponApplied && subtotal > 0 ? 1000000 : 0;
-    const shippingFee = subtotal >= 500000 || selectedItems.length === 0 ? 0 : 30000;
-    const grandTotal = Math.max(0, subtotal - discount + shippingFee);
+
+    // Chua ap dung ma giam gia khi backend chua xac thuc voucher
+    const discount = 0;
+    const shippingFee = 0;
+    const grandTotal = subtotal - discount + shippingFee;
+
+    // Tao don hang tu gio hang database
+    const handleCheckout = async (event) => {
+        event.preventDefault();
+
+        if (!selectedItems.length) {
+            setErrorMessage("Vui long chon san pham muon dat hang.");
+            return;
+        }
+
+        if (!sessionId) {
+            setErrorMessage("Khong tim thay phien gio hang. Hay tai lai trang.");
+            return;
+        }
+
+        try {
+            setProcessing(true);
+            setErrorMessage("");
+            setSuccessMessage("");
+
+            // Chi cho phep dat hang voi toan bo gio hang da chon
+            // Backend hien tai xoa tat ca item trong gio sau khi dat hang.
+            if (selectedItems.length !== cartItems.length) {
+                setErrorMessage(
+                    "Backend hien xoa toan bo gio hang sau khi dat hang. " +
+                    "Vui long chon tat ca san pham hoac bo chon cac san pham khong muon mua."
+                );
+                return;
+            }
+
+            const axiosClient = (
+                await import("@/lib/axiosClient")
+            ).default;
+
+            const response = await axiosClient.post("/orders", {
+                ...customer,
+                session_id: sessionId,
+            });
+
+            const order = response?.data?.data || response?.data;
+
+            setOrderCode(order?.ma_don_hang || "Don hang da duoc tao");
+            setCartItems([]);
+            setShowCheckout(false);
+            setOrderSuccess(true);
+
+
+        } catch (error) {
+            // In chi tiet loi API de kiem tra
+            console.error("Loi tao don hang:", error.response?.status);
+            console.error(
+                "Du lieu loi tu Laravel:",
+                JSON.stringify(error.response?.data, null, 2)
+            );
+            console.error("Du lieu gui len:", {
+                ...customer,
+                session_id: sessionId,
+            });
+
+            const errors = error.response?.data?.errors;
+
+            const validationMessage = errors
+                ? Object.values(errors).flat().join(" ")
+                : "";
+
+            setErrorMessage(
+                validationMessage ||
+                error.response?.data?.message ||
+                "Dat hang that bai. Vui long kiem tra log Laravel."
+            );
+        } finally {
+            setProcessing(false);
+        }
+    };
+    // Man hinh xac nhan dat hang thanh cong
+    if (orderSuccess) {
+        return (
+            <main className="min-h-[70vh] flex items-center justify-center px-4 py-12 bg-slate-50 dark:bg-slate-950">
+                <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center shadow-sm">
+                    <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950">
+                        <svg
+                            width="42"
+                            height="42"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-emerald-600 dark:text-emerald-400"
+                        >
+                            <path d="m5 12 4 4L19 6" />
+                        </svg>
+                    </div>
+
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                        Đặt hàng thành công!
+                    </h1>
+
+                    <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                        Cảm ơn bạn đã mua sắm tại TECHNOVA.
+                        Đơn hàng của bạn đã được ghi nhận và đang chờ xử lý.
+                    </p>
+
+
+
+                    <div className="mt-7 flex flex-col gap-3">
+                        <Link
+                            href="/"
+                            className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-700"
+                        >
+                            Tiếp tục mua sắm
+                        </Link>
+
+                        <button
+                            type="button"
+                            onClick={() => router.push("/orders")}
+                            className="rounded-xl border border-slate-200 dark:border-slate-700 px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                        >
+                            Xem đơn hàng của tôi
+                        </button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
+    // Man hinh thanh toan rieng
+    if (showCheckout) {
+        return (
+            <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-8 sm:py-12">
+                <div className="mx-auto max-w-6xl">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setShowCheckout(false);
+                            setErrorMessage("");
+                        }}
+                        className="mb-6 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                    >
+                        ← Quay lại giỏ hàng
+                    </button>
+
+                    <div className="mb-8">
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                            Thanh toán
+                        </h1>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            Kiểm tra thông tin và xác nhận đơn hàng của bạn.
+                        </p>
+                    </div>
+
+                    <form
+                        onSubmit={handleCheckout}
+                        className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
+                    >
+                        {/* Thong tin nhan hang va phuong thuc thanh toan */}
+                        <div className="lg:col-span-8 space-y-6">
+                            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                    Địa chỉ nhận hàng
+                                </h2>
+
+                                <p className="mt-1 mb-5 text-sm text-slate-500 dark:text-slate-400">
+                                    Nhập thông tin để đơn hàng được giao đúng địa chỉ.
+                                </p>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                            Họ và tên người nhận
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            value={customer.ten_nguoi_nhan}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    ten_nguoi_nhan: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Nhập họ và tên"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                            Số điện thoại
+                                        </label>
+
+                                        <input
+                                            type="tel"
+                                            value={customer.so_dien_thoai}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    so_dien_thoai: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Nhập số điện thoại"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                            Địa chỉ giao hàng
+                                        </label>
+
+                                        <textarea
+                                            value={customer.dia_chi}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    dia_chi: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"
+                                            rows={3}
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7">
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                    Phương thức thanh toán
+                                </h2>
+
+                                <div className="mt-5 space-y-3">
+                                    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${customer.phuong_thuc_thanh_toan === "cod"
+                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                                        : "border-slate-200 dark:border-slate-700"
+                                        }`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            value="cod"
+                                            checked={customer.phuong_thuc_thanh_toan === "cod"}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    phuong_thuc_thanh_toan: e.target.value,
+                                                })
+                                            }
+                                            className="mt-1 accent-blue-600"
+                                        />
+
+                                        <div>
+                                            <p className="font-bold text-slate-900 dark:text-white">
+                                                Thanh toán khi nhận hàng (COD)
+                                            </p>
+                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                Thanh toán cho nhân viên giao hàng khi nhận sản phẩm.
+                                            </p>
+                                        </div>
+                                    </label>
+
+                                    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${customer.phuong_thuc_thanh_toan === "bank_transfer"
+                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                                        : "border-slate-200 dark:border-slate-700"
+                                        }`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            value="bank_transfer"
+                                            checked={customer.phuong_thuc_thanh_toan === "bank_transfer"}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    phuong_thuc_thanh_toan: e.target.value,
+                                                })
+                                            }
+                                            className="mt-1 accent-blue-600"
+                                        />
+
+                                        <div>
+                                            <p className="font-bold text-slate-900 dark:text-white">
+                                                Chuyển khoản ngân hàng / ATM
+                                            </p>
+                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                                Chọn phương thức này nếu hệ thống của bạn hỗ trợ quy trình chuyển khoản.
+                                            </p>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                    Chuyển khoản hiện chưa đồng nghĩa với thanh toán trực tuyến thành công.
+                                    Để nhận tiền tự động, cần tích hợp cổng thanh toán hoặc quy trình xác nhận chuyển khoản.
+                                </p>
+                            </section>
+
+                            {errorMessage && (
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                                    {errorMessage}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Tom tat don hang */}
+                        <aside className="lg:col-span-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 lg:sticky lg:top-8">
+                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                Đơn hàng của bạn
+                            </h2>
+
+                            <div className="mt-5 space-y-4">
+                                {selectedItems.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className="flex items-start gap-3"
+                                    >
+                                        <div className="relative h-16 w-16 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+                                            <img
+                                                src={item.imageUrl}
+                                                alt={item.name}
+                                                className="h-full w-full object-contain"
+                                            />
+
+                                            <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700 px-1 text-xs font-bold text-white">
+                                                {item.quantity}
+                                            </span>
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <p className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-white">
+                                                {item.name}
+                                            </p>
+
+                                            <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                                                {formatCurrency(item.price * item.quantity)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-5 space-y-3 border-t border-slate-200 dark:border-slate-700 pt-5 text-sm">
+                                <div className="flex justify-between gap-3 text-slate-500 dark:text-slate-400">
+                                    <span>Tạm tính</span>
+                                    <span>{formatCurrency(subtotal)}</span>
+                                </div>
+
+                                <div className="flex justify-between gap-3 text-slate-500 dark:text-slate-400">
+                                    <span>Phí vận chuyển</span>
+                                    <span className="font-semibold text-emerald-600">Miễn phí</span>
+                                </div>
+
+                                <div className="flex justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                                    <span className="font-bold text-slate-900 dark:text-white">
+                                        Tổng thanh toán
+                                    </span>
+                                    <span className="text-xl font-black text-blue-600 dark:text-blue-400">
+                                        {formatCurrency(grandTotal)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={processing || !selectedItems.length}
+                                className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {processing
+                                    ? "Đang tạo đơn hàng..."
+                                    : "Đặt hàng"}
+                            </button>
+
+                            <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                                Vui lòng kiểm tra kỹ thông tin trước khi đặt hàng.
+                            </p>
+                        </aside>
+                    </form>
+                </div>
+            </main>
+        );
+    }
+
 
     return (
+
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
             {/* =========================================================
                 1. BREADCRUMBS
             ========================================================= */}
             <nav className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-6">
+
+                {/* Thong bao trang thai */}
+                {loading && (
+                    <p className="py-4 text-center text-sm text-slate-500">
+                        Đang tải giỏ hàng...
+                    </p>
+                )}
+
+                {errorMessage && (
+                    <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                        {errorMessage}
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                        {successMessage}
+                    </div>
+                )}
+
                 <Link href="/" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     Trang chủ
                 </Link>
@@ -132,34 +693,30 @@ export default function Cart() {
                     </p>
                 </div>
 
-                {cartItems.length > 0 ? (
+                {cartItems.length > 0 && (
                     <button
                         type="button"
                         onClick={handleClearCart}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         Xóa toàn bộ giỏ hàng
                     </button>
-                ) : (
-                    <button
-                        type="button"
-                        onClick={handleResetMockCart}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
-                    >
-                        ↺ Nạp lại 3 sản phẩm mẫu
-                    </button>
                 )}
+
             </div>
 
             {/* =========================================================
                 3. NỘI DUNG TĨNH CỦA GIỎ HÀNG
             ========================================================= */}
-            {cartItems.length === 0 ? (
+            {loading ? (
+                <p className="py-10 text-center text-slate-500">
+                    Đang tải dữ liệu...
+                </p>
+            ) : cartItems.length === 0 ? (
                 /* Giao diện khi giỏ hàng trống */
                 <div className="text-center py-16 sm:py-20 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-8 max-w-xl mx-auto shadow-sm space-y-6">
                     <div className="w-20 h-20 mx-auto rounded-3xl bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
                     </div>
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white">
@@ -177,22 +734,16 @@ export default function Cart() {
                         >
                             Khám phá sản phẩm
                         </Link>
-                        <button
-                            type="button"
-                            onClick={handleResetMockCart}
-                            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                        >
-                            ↺ Hiển thị sản phẩm mẫu
-                        </button>
+
                     </div>
                 </div>
             ) : (
                 /* Bảng giỏ hàng tĩnh hiển thị ngay lập tức */
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    
+
                     {/* Cột trái: Danh sách sản phẩm (8 cột) */}
                     <div className="lg:col-span-8 space-y-5">
-                        
+
                         {/* Banner Miễn phí vận chuyển */}
                         <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-violet-500/10 border border-blue-500/20 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
@@ -208,7 +759,7 @@ export default function Cart() {
 
                         {/* Thẻ bảng sản phẩm */}
                         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-4 sm:p-6 shadow-sm space-y-4">
-                            
+
                             {/* Tiêu đề bảng */}
                             <div className="grid grid-cols-12 gap-3 pb-3 border-b border-slate-100 dark:border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 items-center">
                                 <div className="col-span-12 sm:col-span-6 flex items-center gap-3">
@@ -234,12 +785,11 @@ export default function Cart() {
                                     return (
                                         <div
                                             key={item.id}
-                                            className={`py-4 transition-colors rounded-2xl ${
-                                                item.selected ? "bg-transparent" : "opacity-50"
-                                            }`}
+                                            className={`py-4 transition-colors rounded-2xl ${item.selected ? "bg-transparent" : "opacity-50"
+                                                }`}
                                         >
                                             <div className="grid grid-cols-12 gap-3 sm:gap-4 items-center">
-                                                
+
                                                 {/* Cột sản phẩm */}
                                                 <div className="col-span-12 sm:col-span-6 flex items-center gap-3">
                                                     <input
@@ -379,7 +929,7 @@ export default function Cart() {
                     {/* Cột phải: Tóm tắt đơn hàng tĩnh (4 cột) */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-5 sticky top-28">
-                            
+
                             <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                 <span>Tóm tắt đơn hàng</span>
                                 <span className="text-xs font-normal text-slate-400">
@@ -396,24 +946,7 @@ export default function Cart() {
                                     </span>
                                 </div>
 
-                                {discount > 0 && (
-                                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-                                        <span className="inline-flex items-center gap-1.5 font-medium">
-                                            <span>Mã giảm giá ({couponCode})</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsCouponApplied(false)}
-                                                className="text-slate-400 hover:text-rose-500 font-bold text-xs"
-                                                title="Bỏ mã"
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                        <span className="font-bold">
-                                            -{formatCurrency(discount)}
-                                        </span>
-                                    </div>
-                                )}
+
 
                                 <div className="flex justify-between text-slate-600 dark:text-slate-400">
                                     <span>Phí giao hàng</span>
@@ -438,50 +971,131 @@ export default function Cart() {
                             </div>
 
                             {/* Ô Voucher tĩnh */}
-                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Mã ưu đãi / Voucher
-                                </label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Nhập mã ưu đãi..."
-                                        value={couponCode}
-                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                        className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs uppercase font-mono text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsCouponApplied(true)}
-                                        className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap"
-                                    >
-                                        Áp dụng
-                                    </button>
-                                </div>
 
-                                {isCouponApplied && (
-                                    <div className="text-[11px] p-2 rounded-xl flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                        <span>✓</span>
-                                        <span>Đã áp dụng mã {couponCode}: Giảm 1.000.000₫</span>
-                                    </div>
-                                )}
-                            </div>
 
                             {/* Nút Thanh toán tĩnh */}
+
                             <button
                                 type="button"
+                                disabled={processing || selectedItems.length === 0}
                                 onClick={() => {
-                                    alert(`Xác nhận đơn hàng mẫu với tổng thanh toán: ${formatCurrency(grandTotal)}`);
+                                    setErrorMessage("");
+
+                                    // Kiem tra dang nhap truoc khi thanh toan
+                                    const token =
+                                        localStorage.getItem("token") ||
+                                        localStorage.getItem("access_token");
+
+                                    if (!token) {
+                                        router.push(`/login?redirect=${encodeURIComponent("/cart")}`);
+                                        return;
+                                    }
+
+                                    setShowCheckout(true);
                                 }}
-                                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-center block shadow-xl shadow-blue-500/25 transition-all active:scale-95 text-sm"
+                                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-bold text-center shadow-xl shadow-blue-500/25 transition-all text-sm"
                             >
                                 Tiến hành thanh toán ({formatCurrency(grandTotal)}) →
                             </button>
 
+
+                            {showCheckout && (
+                                <form
+                                    onSubmit={handleCheckout}
+                                    className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6"
+                                >
+                                    <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">
+                                        Thông tin nhận hàng
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Họ và tên người nhận"
+                                            value={customer.ten_nguoi_nhan}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    ten_nguoi_nhan: e.target.value,
+                                                })
+                                            }
+                                            className="w-full border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            required
+                                        />
+
+                                        <input
+                                            type="tel"
+                                            placeholder="Số điện thoại"
+                                            value={customer.so_dien_thoai}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    so_dien_thoai: e.target.value,
+                                                })
+                                            }
+                                            className="w-full border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            required
+                                        />
+
+                                        <textarea
+                                            placeholder="Địa chỉ nhận hàng"
+                                            value={customer.dia_chi}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    dia_chi: e.target.value,
+                                                })
+                                            }
+                                            className="w-full border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            rows={3}
+                                            required
+                                        />
+
+                                        <select
+                                            value={customer.phuong_thuc_thanh_toan}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    phuong_thuc_thanh_toan: e.target.value,
+                                                })
+                                            }
+                                            className="w-full border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        >
+                                            <option value="cod">
+                                                Thanh toán khi nhận hàng (COD)
+                                            </option>
+                                            <option value="bank_transfer">
+                                                Chuyển khoản ngân hàng
+                                            </option>
+                                        </select>
+
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="w-full rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3"
+                                        >
+                                            {processing
+                                                ? "Đang xử lý..."
+                                                : "Xác nhận đặt hàng"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            disabled={processing}
+                                            onClick={() => setShowCheckout(false)}
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300"
+                                        >
+                                            Quay lại giỏ hàng
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+
                             {/* Bảo mật */}
                             <div className="text-center pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                                     Bảo mật giao dịch chuẩn mã hóa SSL 256-bit
                                 </p>
                             </div>

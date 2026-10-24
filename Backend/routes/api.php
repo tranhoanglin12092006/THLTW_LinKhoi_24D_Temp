@@ -78,6 +78,11 @@ Route::get('/carts', [CartController::class, 'index']);
 // Thêm giỏ hàng
 Route::post('/carts', [CartController::class, 'store']);
 
+Route::post('/carts/guest', [CartController::class, 'guestCart']);
+Route::post(
+    '/carts/merge-guest',
+    [CartController::class, 'mergeGuestCart']
+)->middleware('auth:sanctum');
 // Xem một giỏ hàng
 Route::get('/carts/{id}', [CartController::class, 'show']);
 

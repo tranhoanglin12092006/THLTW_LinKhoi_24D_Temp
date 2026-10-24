@@ -9,6 +9,9 @@ use App\Http\Resources\CartItemResource;
 use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -27,7 +30,6 @@ class CartController extends Controller
                 'message' => 'Lấy danh sách giỏ hàng thành công.',
                 'data' => CartResource::collection($carts)
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Lấy danh sách giỏ hàng thất bại.',
@@ -53,7 +55,6 @@ class CartController extends Controller
                 'message' => 'Tạo giỏ hàng thành công.',
                 'data' => new CartResource($cart)
             ], 201);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Tạo giỏ hàng thất bại.',
@@ -61,6 +62,137 @@ class CartController extends Controller
             ], 500);
         }
     }
+
+
+    /**
+     * Lay hoac tao gio hang cho khach vang lai.
+     */
+    public function guestCart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => 'required|string|min:32|max:100',
+        ]);
+
+        try {
+            $cart = Cart::with('chiTietGioHangs.sanPham')
+                ->whereNull('nguoi_dung_id')
+                ->where('session_id', $validated['session_id'])
+                ->first();
+
+            if (!$cart) {
+                $cart = Cart::create([
+                    'nguoi_dung_id' => null,
+                    'session_id' => $validated['session_id'],
+                ]);
+
+                $cart->load('chiTietGioHangs.sanPham');
+            }
+
+            return response()->json([
+                'message' => 'Lay gio hang thanh cong.',
+                'data' => new CartResource($cart),
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Khong the lay gio hang.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Gop gio hang khach vao tai khoan sau khi dang nhap.
+     */
+    public function mergeGuestCart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => 'required|string|min:32|max:100',
+        ]);
+
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Vui long dang nhap.',
+            ], 401);
+        }
+
+        try {
+            $cart = DB::transaction(function () use ($validated, $user) {
+                // Tim gio hang cua khach.
+                $guestCart = Cart::whereNull('nguoi_dung_id')
+                    ->where('session_id', $validated['session_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                // Tim gio hang cua tai khoan.
+                $userCart = Cart::where('nguoi_dung_id', $user->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                // Neu khach chua co gio hang, tra ve gio hang tai khoan.
+                if (!$guestCart) {
+                    return $userCart;
+                }
+
+                // Neu tai khoan chua co gio hang, chuyen gio hang khach sang tai khoan.
+                if (!$userCart) {
+                    $guestCart->update([
+                        'nguoi_dung_id' => $user->id,
+                        'session_id' => null,
+                    ]);
+
+                    return $guestCart;
+                }
+
+                // Neu ca hai gio hang deu ton tai, gop san pham.
+                $guestItems = $guestCart->chiTietGioHangs()->get();
+
+                foreach ($guestItems as $guestItem) {
+                    $userItem = $userCart->chiTietGioHangs()
+                        ->where('san_pham_id', $guestItem->san_pham_id)
+                        ->first();
+
+                    if ($userItem) {
+                        // San pham da co thi cong don so luong.
+                        $userItem->so_luong += $guestItem->so_luong;
+                        $userItem->save();
+
+                        $guestItem->delete();
+                    } else {
+                        // San pham chua co thi chuyen sang gio hang tai khoan.
+                        $guestItem->update([
+                            'gio_hang_id' => $userCart->id,
+                        ]);
+                    }
+                }
+
+                // Xoa gio hang khach sau khi da gop xong.
+                $guestCart->delete();
+
+                return $userCart;
+            });
+
+            if (!$cart) {
+                return response()->json([
+                    'message' => 'Khong tim thay gio hang.',
+                    'data' => null,
+                ], 200);
+            }
+
+            $cart->load('chiTietGioHangs.sanPham');
+
+            return response()->json([
+                'message' => 'Gop gio hang thanh cong.',
+                'data' => new CartResource($cart),
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gop gio hang that bai.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     /**
      * Xem một giỏ hàng theo ID.
@@ -76,7 +208,6 @@ class CartController extends Controller
                 'message' => 'Lấy thông tin giỏ hàng thành công.',
                 'data' => new CartResource($cart)
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Không tìm thấy giỏ hàng.',
@@ -107,7 +238,6 @@ class CartController extends Controller
                 'message' => 'Cập nhật giỏ hàng thành công.',
                 'data' => new CartResource($cart)
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Cập nhật giỏ hàng thất bại.',
@@ -134,7 +264,6 @@ class CartController extends Controller
             return response()->json([
                 'message' => 'Xóa giỏ hàng thành công.'
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Xóa giỏ hàng thất bại.',
@@ -177,7 +306,6 @@ class CartController extends Controller
                 'message' => $message,
                 'data' => new CartItemResource($item)
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Thêm sản phẩm vào giỏ hàng thất bại.',
@@ -210,7 +338,6 @@ class CartController extends Controller
                 'message' => 'Cập nhật số lượng sản phẩm thành công.',
                 'data' => new CartItemResource($item)
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Cập nhật số lượng sản phẩm thất bại.',
@@ -234,7 +361,6 @@ class CartController extends Controller
             return response()->json([
                 'message' => 'Xóa sản phẩm khỏi giỏ hàng thành công.'
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Xóa sản phẩm khỏi giỏ hàng thất bại.',
@@ -243,4 +369,3 @@ class CartController extends Controller
         }
     }
 }
-

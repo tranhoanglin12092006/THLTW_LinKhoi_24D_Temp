@@ -7,6 +7,7 @@ import Link from "next/link";
 import SearchBox from "./SearchBox";
 // Đổi đúng đường dẫn/tên hàm đăng xuất trong project của bạn
 import { logoutUser } from "@/services/authServices";
+import { getOrCreateGuestCart } from "@/services/cartServices";
 
 export default function Header() {
     const router = useRouter();
@@ -14,21 +15,26 @@ export default function Header() {
     const [cartCount, setCartCount] = useState(0);
     const [currentUser, setCurrentUser] = useState(null);
 
-    // Đọc giỏ hàng + user mỗi khi đổi trang
-    useEffect(() => {
+    // Dat ben trong component Header
+    const loadCartCount = async () => {
         try {
-            const stored = localStorage.getItem("technova_cart");
-            const cart = stored ? JSON.parse(stored) : [];
-            if (Array.isArray(cart)) {
-                setCartCount(
-                    cart.reduce((sum, item) => sum + (item.quantity || 1), 0)
-                );
-            } else {
+            let sessionId = localStorage.getItem("cart_session_id");
+            if (!sessionId) {
                 setCartCount(0);
+                return;
             }
+            const res = await getOrCreateGuestCart(sessionId);
+            const items = res?.data?.chi_tiet_gio_hang || [];
+            setCartCount(
+                items.reduce((sum, item) => sum + Number(item.so_luong || 1), 0)
+            );
         } catch (e) {
             setCartCount(0);
         }
+    };
+
+    useEffect(() => {
+        loadCartCount();
 
         try {
             const userStored = localStorage.getItem("user");
@@ -38,6 +44,14 @@ export default function Header() {
         }
     }, [pathname]);
 
+    // Cap nhat khi them san pham (su kien "cart:updated" tu trang Products)
+    useEffect(() => {
+        const handler = () => loadCartCount();
+        window.addEventListener("cart:updated", handler);
+        return () => window.removeEventListener("cart:updated", handler);
+    }, []);
+
+    
     // Xử lý đăng xuất
     const handleLogout = async () => {
         if (!confirm("Bạn có chắc chắn muốn đăng xuất tài khoản?")) return;
@@ -282,8 +296,10 @@ export default function Header() {
                                 </div>
                             </div>
                             {/* Cart */}
+                            {/* Cart */}
                             <a
                                 href="/cart"
+                                data-cart-icon
                                 className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 relative"
                                 title="Giỏ hàng"
                             >

@@ -8,6 +8,8 @@ import Link from "next/link";
 
 import { getAllProducts } from "@/services/productServices";
 import { getAllCategories } from "@/services/categoryServices";
+import { useRouter } from "next/navigation";
+import { getOrCreateGuestCart, addCartItem } from "@/services/cartServices";
 
 
 
@@ -101,6 +103,67 @@ function matchesCategoryFilter(product, filterKey) {
     }
 }
 
+// Lay hoac tao ma phien gio hang khach (giong trang Cart)
+function getSessionId() {
+    let sessionId = localStorage.getItem("cart_session_id");
+    if (!sessionId) {
+        sessionId =
+            typeof crypto.randomUUID === "function"
+                ? crypto.randomUUID().replaceAll("-", "")
+                : Array.from({ length: 4 }, () =>
+                    Math.random().toString(36).slice(2)
+                ).join("");
+        localStorage.setItem("cart_session_id", sessionId);
+    }
+    return sessionId;
+}
+
+// Hieu ung anh san pham bay vao icon gio hang tren header
+function flyToCart(imgEl) {
+    const target = document.querySelector("[data-cart-icon]");
+    if (!imgEl || !target) return;
+
+    const from = imgEl.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+
+    const clone = imgEl.cloneNode(true);
+    Object.assign(clone.style, {
+        position: "fixed",
+        left: `${from.left}px`,
+        top: `${from.top}px`,
+        width: `${from.width}px`,
+        height: `${from.height}px`,
+        objectFit: "contain",
+        borderRadius: "16px",
+        zIndex: 9999,
+        pointerEvents: "none",
+    });
+    document.body.appendChild(clone);
+
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+
+    const anim = clone.animate(
+        [
+            { transform: "translate(0,0) scale(1)", opacity: 1 },
+            { transform: `translate(${dx}px, ${dy}px) scale(0.08)`, opacity: 0.4 },
+        ],
+        { duration: 800, easing: "cubic-bezier(0.5, -0.2, 0.8, 0.5)" }
+    );
+
+    anim.onfinish = () => {
+        clone.remove();
+        // Icon gio hang "nay" lai mot nhip
+        target.animate(
+            [
+                { transform: "scale(1)" },
+                { transform: "scale(1.35)" },
+                { transform: "scale(1)" },
+            ],
+            { duration: 350 }
+        );
+    };
+}
 
 
 
@@ -110,7 +173,7 @@ export default function Products() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
-    
+
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -121,9 +184,10 @@ export default function Products() {
     const [selectedRating, setSelectedRating] = useState(0);
     const [sortBy, setSortBy] = useState("default");
     const [currentPage, setCurrentPage] = useState(1);
+    const [addingId, setAddingId] = useState(null);
 
-  
     const productsPerPage = 9;
+
 
 
     useEffect(() => {
@@ -244,7 +308,7 @@ export default function Products() {
     // Tao danh sach danh muc va so luong tu du lieu san pham
 
 
-    
+
     // Loc va sap xep san pham
     const filteredProducts = useMemo(() => {
         let result = [...products];
@@ -338,7 +402,7 @@ export default function Products() {
     ]);
 
 
-    
+
 
     // Tinh phan trang tu danh sach da loc
     const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
@@ -392,6 +456,67 @@ export default function Products() {
     const handleSorting = (value) => {
         setSortBy(value);
         setCurrentPage(1);
+    };
+
+
+
+    // Them san pham vao gio hang trong database
+    const addToCart = async (product) => {
+        const sessionId = getSessionId();
+        const response = await getOrCreateGuestCart(sessionId);
+        const cartId = response?.data?.id;
+
+        if (!cartId) throw new Error("Khong lay duoc gio hang.");
+
+        await addCartItem({
+            gio_hang_id: cartId,
+            san_pham_id: product.id,
+            so_luong: 1,
+        });
+
+        // Bao cho header cap nhat so luong (neu co lang nghe)
+        window.dispatchEvent(new Event("cart:updated"));
+    };
+
+    // Bam icon gio hang: them vao gio + hieu ung bay
+    const handleAddToCart = async (product, event) => {
+        if (addingId || product.stock <= 0) return;
+
+        const imgEl = event.currentTarget
+            .closest("article")
+            ?.querySelector("img");
+
+        try {
+            setAddingId(product.id);
+            flyToCart(imgEl);
+            await addToCart(product);
+        } catch (err) {
+            console.error("Loi them vao gio:", err);
+            alert(
+                err?.response?.data?.message ||
+                "Không thể thêm vào giỏ hàng. Vui lòng thử lại."
+            );
+        } finally {
+            setAddingId(null);
+        }
+    };
+
+    // Bam "Mua ngay": them vao gio roi chuyen thang toi thanh toan
+    const handleBuyNow = async (product) => {
+        if (addingId || product.stock <= 0) return;
+
+        try {
+            setAddingId(product.id);
+            await addToCart(product);
+            router.push("/cart?checkout=1");
+        } catch (err) {
+            console.error("Loi mua ngay:", err);
+            alert(
+                err?.response?.data?.message ||
+                "Không thể xử lý. Vui lòng thử lại."
+            );
+            setAddingId(null);
+        }
     };
 
 
@@ -991,21 +1116,61 @@ export default function Products() {
                                                     : "Hết hàng"}
                                             </p>
 
-                                            <button
-                                                type="button"
-                                                disabled={product.stock <= 0}
-                                                onClick={() => handleAddToCart(product)}
-                                                className="w-full mt-2 px-3 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed"
-                                            >
-                                                {product.stock > 0 ? (
-                                                    <>
-                                                        <span className="mr-1">🛒</span>
-                                                        Thêm vào giỏ hàng
-                                                    </>
-                                                ) : (
-                                                    "Hết hàng"
-                                                )}
-                                            </button>
+                                            <div className="product-actions">
+
+                                                <div className="product-actions mt-auto flex items-stretch gap-2.5 pt-5">
+                                                    {/* Thêm vào giỏ: nút icon, có tooltip */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleAddToCart(product, e)}
+                                                        disabled={addingId === product.id || product.stock <= 0}
+                                                        aria-label="Thêm vào giỏ hàng"
+                                                        title="Thêm vào giỏ hàng"
+                                                        className="group inline-flex h-11 w-11 shrink-0 items-center justify-center
+                   rounded-xl border border-slate-200 bg-white text-slate-600
+                   transition-all duration-200
+                   hover:border-blue-600 hover:bg-blue-50 hover:text-blue-600
+                   active:scale-95
+                   focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.8"
+                                                            className="h-5 w-5 transition-transform duration-200 group-hover:scale-110"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                d="M3 3h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6"
+                                                            />
+                                                            <circle cx="10" cy="20" r="1" />
+                                                            <circle cx="18" cy="20" r="1" />
+                                                        </svg>
+                                                    </button>
+
+                                                    {/* Mua ngay: nút chính */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleBuyNow(product)}
+                                                        disabled={addingId === product.id || product.stock <= 0}
+                                                        className="inline-flex h-11 flex-1 items-center justify-center
+                   whitespace-nowrap rounded-xl bg-blue-600 px-4
+                   text-sm font-semibold text-white
+                   shadow-sm shadow-blue-600/25
+                   transition-all duration-200
+                   hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/30
+                   active:scale-[0.98]
+                   focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200
+                   disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                                                    >
+                                                        {product.stock <= 0 ? "Hết hàng" : "Mua ngay"}
+                                                    </button>
+                                                </div>
+
+                                            </div>
 
                                         </div>
                                     </article>
