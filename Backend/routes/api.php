@@ -112,8 +112,20 @@ Route::delete('/cart-items/{id}', [CartItemController::class, 'destroy']);
 
 // ==================== API ĐƠN HÀNG ====================
 
+// ==================== API ĐƠN HÀNG ====================
+
 Route::get('/orders', [OrderController::class, 'index']);
 Route::post('/orders', [OrderController::class, 'store']);
+
+// Đơn hàng của người dùng đang đăng nhập (cần token).
+// BẮT BUỘC đặt TRƯỚC /orders/{id}, nếu không Laravel hiểu chữ "my" là một {id}.
+Route::get('/orders/my', [OrderController::class, 'myOrders'])
+    ->middleware('auth:sanctum');
+
+// Khách tự hủy đơn của mình (cần token)
+Route::patch('/orders/{id}/cancel', [OrderController::class, 'cancel'])
+    ->middleware('auth:sanctum');
+
 Route::get('/orders/{id}', [OrderController::class, 'show']);
 Route::put('/orders/{id}', [OrderController::class, 'update']);
 Route::delete('/orders/{id}', [OrderController::class, 'destroy']);

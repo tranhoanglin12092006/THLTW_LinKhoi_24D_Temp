@@ -171,6 +171,82 @@ class OrderController extends Controller
     }
 }
 
+    /**
+     * Lấy danh sách đơn hàng CỦA NGƯỜI DÙNG ĐANG ĐĂNG NHẬP.
+     * (Hàm index() ở trên trả về đơn của tất cả mọi người, dành cho admin)
+     */
+    public function myOrders(): JsonResponse
+    {
+        // Lấy user từ token gửi kèm request (Authorization: Bearer ...)
+        $user = Auth::guard('sanctum')->user();
+
+        // Không có token hoặc token sai -> báo cần đăng nhập
+        if (!$user) {
+            return response()->json(['message' => 'Vui lòng đăng nhập.'], 401);
+        }
+
+        // Chỉ lấy đơn có nguoi_dung_id trùng với user hiện tại.
+        // with(...) nạp luôn chi tiết đơn + sản phẩm để khỏi query lẻ từng đơn.
+        // orderByDesc('id') -> đơn mới nhất hiện lên đầu.
+        $orders = Order::with('chiTietDonHangs.sanPham')
+            ->where('nguoi_dung_id', $user->id)
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => OrderResource::collection($orders),
+        ]);
+    }
+
+    /**
+     * Khách tự hủy đơn.
+     * Chỉ cho hủy khi đơn còn "Chờ xử lý" (trang_thai = 0).
+     * Khi hủy sẽ trả lại số lượng tồn kho cho sản phẩm.
+     */
+    public function cancel($id): JsonResponse
+    {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Vui lòng đăng nhập.'], 401);
+        }
+
+        try {
+            // Transaction: hoặc làm xong hết, hoặc lỗi thì hoàn tác hết
+            DB::transaction(function () use ($id, $user) {
+
+                // Tìm đơn theo id, nhưng PHẢI là đơn của chính user này
+                // (tránh user A hủy đơn của user B).
+                // lockForUpdate() khóa dòng, tránh 2 request hủy cùng lúc.
+                $order = Order::where('nguoi_dung_id', $user->id)
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                // Đơn đã xử lý/giao/hủy rồi thì không cho hủy nữa
+                if ((int) $order->trang_thai !== 0) {
+                    throw new \RuntimeException('Chỉ hủy được đơn đang chờ xử lý.');
+                }
+
+                // Trả lại tồn kho: cộng lại số lượng từng sản phẩm trong đơn
+                foreach ($order->chiTietDonHangs as $detail) {
+                    \App\Models\Product::whereKey($detail->san_pham_id)
+                        ->increment('so_luong_ton', $detail->so_luong);
+                }
+
+                // Đổi trạng thái sang 4 = Đã hủy
+                $order->update(['trang_thai' => 4]);
+            });
+
+            return response()->json(['message' => 'Hủy đơn hàng thành công.']);
+        } catch (\RuntimeException $e) {
+            // Lỗi nghiệp vụ do mình chủ động throw ở trên
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            // Lỗi bất ngờ khác (không tìm thấy đơn, lỗi DB...)
+            return response()->json(['message' => 'Hủy đơn hàng thất bại.'], 500);
+        }
+    }
+
 
     // Xem một đơn hàng
     public function show($id)

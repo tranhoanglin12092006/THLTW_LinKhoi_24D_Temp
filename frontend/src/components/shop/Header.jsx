@@ -52,6 +52,8 @@ export default function Header() {
     }, []);
 
     
+
+
     // Xử lý đăng xuất
     const handleLogout = async () => {
         if (!confirm("Bạn có chắc chắn muốn đăng xuất tài khoản?")) return;
@@ -97,7 +99,7 @@ export default function Header() {
                             </span>
                         </a>
                         <a
-                            href="orders.html"
+                            href="/profile?tab=orders"
                             className="hover:text-blue-400 transition-colors flex items-center gap-1.5"
                         >
                             <i data-lucide="package" className="w-3.5 h-3.5" />
@@ -247,7 +249,7 @@ export default function Header() {
                                                 </Link>
 
                                                 <Link
-                                                    href="/orders"
+                                                    href="/profile?tab=orders"
                                                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-slate-700 dark:text-slate-300 transition-colors"
                                                 >
                                                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

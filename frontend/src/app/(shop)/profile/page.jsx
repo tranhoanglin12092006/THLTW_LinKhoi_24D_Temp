@@ -5,6 +5,29 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getMe, updateProfile, changePassword, logoutUser } from "@/services/authServices";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { getMyOrders, cancelMyOrder } from "@/services/orderServices";
+
+
+// Bảng chuyển mã trạng thái (số) thành chữ + màu hiển thị
+// Mã số phải khớp backend và trang quản trị: 0..4
+const ORDER_STATUS = {
+    0: { text: "Chờ xử lý", cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", dot: "bg-amber-500" },
+    1: { text: "Đang xử lý", cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", dot: "bg-blue-500" },
+    2: { text: "Đang giao", cls: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20", dot: "bg-violet-500" },
+    3: { text: "Đã giao", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", dot: "bg-emerald-500" },
+    4: { text: "Đã hủy", cls: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20", dot: "bg-rose-500" },
+};
+
+// Lấy danh sách sản phẩm trong một đơn.
+// Tên field tùy OrderResource của bạn, nên thử lần lượt từng tên.
+function getOrderDetails(order) {
+    return (
+        order.chi_tiet_don_hang ||
+        order.chi_tiet_don_hangs ||
+        order.chiTietDonHangs ||
+        []
+    );
+}
 
 /**
  * =========================================================================
@@ -225,33 +248,54 @@ export default function ProfilePage() {
         }
     };
 
-    // Mock danh sách đơn hàng mẫu
-    const mockOrders = [
-        {
-            id: "TECH-9824",
-            date: "04/10/2026",
-            total: 34990000,
-            status: "shipping",
-            statusLabel: "Đang vận chuyển",
-            items: "iPhone 16 Pro Max 256GB Titan Sa Mạc",
-        },
-        {
-            id: "TECH-8521",
-            date: "22/09/2026",
-            total: 7490000,
-            status: "delivered",
-            statusLabel: "Giao thành công",
-            items: "Tai nghe Sony WH-1000XM5 Chống ồn",
-        },
-        {
-            id: "TECH-7109",
-            date: "10/08/2026",
-            total: 3290000,
-            status: "delivered",
-            statusLabel: "Giao thành công",
-            items: "Bàn phím cơ Logitech MX Mechanical",
-        },
-    ];
+
+
+    const [orders, setOrders] = useState([]);              // danh sách đơn lấy từ API
+    const [ordersLoading, setOrdersLoading] = useState(false); // đang tải đơn?
+    const [ordersError, setOrdersError] = useState("");        // lỗi khi tải đơn
+    const [cancelingId, setCancelingId] = useState(null);      // id đơn đang bấm hủy
+
+    // Gọi API lấy đơn hàng của người dùng đang đăng nhập
+    const loadOrders = async () => {
+        try {
+            setOrdersLoading(true);
+            setOrdersError("");
+
+            const res = await getMyOrders();
+
+            // axiosClient trả về response.data, nên res có dạng { data: [...] }
+            const body = res?.data ?? res;
+            setOrders(Array.isArray(body) ? body : body?.data || []);
+        } catch (err) {
+            setOrdersError(
+                err?.response?.data?.message ||
+                "Không thể tải đơn hàng. Vui lòng thử lại."
+            );
+        } finally {
+            setOrdersLoading(false);
+        }
+    };
+
+    // Chỉ tải đơn khi người dùng mở tab "Đơn hàng của tôi"
+    useEffect(() => {
+        if (activeTab === "orders") loadOrders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
+
+    // Bấm "Hủy đơn hàng"
+    const handleCancelOrder = async (order) => {
+        if (!confirm(`Bạn chắc chắn muốn hủy đơn ${order.ma_don_hang}?`)) return;
+
+        try {
+            setCancelingId(order.id);      // khóa nút trong lúc chờ
+            await cancelMyOrder(order.id);
+            await loadOrders();            // tải lại để thấy trạng thái mới
+        } catch (err) {
+            alert(err?.response?.data?.message || "Không thể hủy đơn hàng.");
+        } finally {
+            setCancelingId(null);
+        }
+    };
 
     // Màn hình chờ khi đang tải thông tin ban đầu
     if (loading) {
@@ -283,13 +327,12 @@ export default function ProfilePage() {
             {/* Thông báo Toast Popup */}
             {toast.show && (
                 <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-                    <div className={`px-5 py-3 rounded-2xl text-white font-semibold text-xs shadow-2xl flex items-center gap-2 ${
-                        toast.type === "error" ? "bg-red-600 shadow-red-600/30" : "bg-emerald-600 shadow-emerald-600/30"
-                    }`}>
+                    <div className={`px-5 py-3 rounded-2xl text-white font-semibold text-xs shadow-2xl flex items-center gap-2 ${toast.type === "error" ? "bg-red-600 shadow-red-600/30" : "bg-emerald-600 shadow-emerald-600/30"
+                        }`}>
                         {toast.type === "error" ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                         )}
                         <span>{toast.message}</span>
                     </div>
@@ -297,14 +340,14 @@ export default function ProfilePage() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
+
                 {/* =========================================================
                     2. SIDEBAR HỒ SƠ NGƯỜI DÙNG (4 CỘT)
                 ========================================================= */}
                 <aside className="lg:col-span-4 space-y-6">
                     {/* Thẻ User Mini Card */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm text-center space-y-4">
-                        
+
                         {/* Avatar chữ cái hoặc hình ảnh */}
                         <div className="relative w-24 h-24 mx-auto">
                             <div className="w-full h-full rounded-full border-4 border-blue-100 dark:border-blue-900/60 shadow-lg bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-3xl flex items-center justify-center uppercase select-none">
@@ -320,7 +363,7 @@ export default function ProfilePage() {
                             <p className="text-xs text-slate-400 mt-0.5">
                                 {formData.email}
                             </p>
-                            
+
                             <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border">
                                 {formData.vai_tro === "admin" ? (
                                     <span className="text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20 px-2 py-0.5 rounded-full">
@@ -338,7 +381,7 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 text-left">
                             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                                 <span className="block text-[11px] text-slate-400 font-medium">Đơn hàng</span>
-                                <span className="text-base font-extrabold text-slate-900 dark:text-white">3 đơn</span>
+                                <span className="text-base font-extrabold text-slate-900 dark:text-white">{orders.length} đơn </span>
                             </div>
                             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
                                 <span className="block text-[11px] text-slate-400 font-medium">Điểm thưởng</span>
@@ -351,59 +394,54 @@ export default function ProfilePage() {
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("info")}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
-                                    activeTab === "info"
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                }`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === "info"
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                                 <span>Thông tin tài khoản</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("orders")}
-                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all ${
-                                    activeTab === "orders"
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                }`}
+                                className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all ${activeTab === "orders"
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15" /><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg>
                                     <span>Đơn hàng của tôi</span>
                                 </div>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-                                    activeTab === "orders" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                                }`}>
-                                    3
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === "orders" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                                    }`}>
+                                    {orders.length}
                                 </span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("security")}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
-                                    activeTab === "security"
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                }`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === "security"
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                                 <span>Bảo mật & Mật khẩu</span>
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => setActiveTab("vip")}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
-                                    activeTab === "vip"
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                                }`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${activeTab === "vip"
+                                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    }`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                                 <span>Đặc quyền Hội viên</span>
                             </button>
 
@@ -413,7 +451,7 @@ export default function ProfilePage() {
                                     onClick={handleLogout}
                                     className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                                     <span>Đăng xuất</span>
                                 </button>
                             </div>
@@ -426,7 +464,7 @@ export default function ProfilePage() {
                     3. NỘI DUNG CHÍNH (8 CỘT)
                 ========================================================= */}
                 <section className="lg:col-span-8 space-y-6">
-                    
+
                     {/* TAB 1: THÔNG TIN CÁ NHÂN */}
                     {activeTab === "info" && (
                         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
@@ -537,7 +575,7 @@ export default function ProfilePage() {
                                             </>
                                         ) : (
                                             <>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                                 <span>Lưu thay đổi thông tin</span>
                                             </>
                                         )}
@@ -550,6 +588,7 @@ export default function ProfilePage() {
                     {/* TAB 2: ĐƠN HÀNG CỦA TÔI */}
                     {activeTab === "orders" && (
                         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+                            {/* Tiêu đề tab */}
                             <div className="pb-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                 <div>
                                     <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -568,41 +607,123 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="space-y-4">
-                                {mockOrders.map((order) => (
-                                    <div
-                                        key={order.id}
-                                        className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/30 transition-all space-y-3"
-                                    >
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800/80">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                                                    #{order.id}
-                                                </span>
-                                                <span className="text-xs text-slate-400">• Ngày đặt: {order.date}</span>
-                                            </div>
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                                                order.status === "shipping"
-                                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                                                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                            }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${order.status === "shipping" ? "bg-amber-500" : "bg-emerald-500"}`} />
-                                                {order.statusLabel}
-                                            </span>
-                                        </div>
+                                {/* Trường hợp 1: đang tải */}
+                                {ordersLoading ? (
+                                    <p className="py-10 text-center text-sm text-slate-500">
+                                        Đang tải đơn hàng...
+                                    </p>
 
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                                            <div className="font-medium text-slate-700 dark:text-slate-300">
-                                                {order.items}
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-slate-500">Tổng thanh toán:</span>
-                                                <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
-                                                    {formatCurrency(order.total)}
-                                                </span>
-                                            </div>
-                                        </div>
+                                    /* Trường hợp 2: có lỗi */
+                                ) : ordersError ? (
+                                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center text-sm text-rose-700">
+                                        {ordersError}
+                                        <button
+                                            type="button"
+                                            onClick={loadOrders}
+                                            className="ml-3 font-semibold underline"
+                                        >
+                                            Thử lại
+                                        </button>
                                     </div>
-                                ))}
+
+                                    /* Trường hợp 3: chưa có đơn nào */
+                                ) : orders.length === 0 ? (
+                                    <p className="py-10 text-center text-sm text-slate-500">
+                                        Bạn chưa có đơn hàng nào.
+                                    </p>
+
+                                    /* Trường hợp 4: vẽ từng đơn */
+                                ) : (
+                                    orders.map((order) => {
+                                        // Lấy chữ + màu theo mã trạng thái; mã lạ thì hiện "Không xác định"
+                                        const status = ORDER_STATUS[Number(order.trang_thai)] || {
+                                            text: "Không xác định",
+                                            cls: "bg-slate-500/10 text-slate-500 border-slate-500/20",
+                                            dot: "bg-slate-400",
+                                        };
+
+                                        const details = getOrderDetails(order);
+                                        // Chỉ đơn "Chờ xử lý" (0) mới được hủy
+                                        const canCancel = Number(order.trang_thai) === 0;
+
+                                        return (
+                                            <div
+                                                key={order.id}
+                                                className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/30 transition-all space-y-3"
+                                            >
+                                                {/* Dòng đầu: mã đơn, ngày đặt, nhãn trạng thái */}
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                                                            {order.ma_don_hang}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400">
+                                                            • Ngày đặt:{" "}
+                                                            {order.created_at
+                                                                ? new Date(order.created_at).toLocaleDateString("vi-VN")
+                                                                : "—"}
+                                                        </span>
+                                                    </div>
+
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${status.cls}`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+                                                        {status.text}
+                                                    </span>
+                                                </div>
+
+                                                {/* Các sản phẩm trong đơn */}
+                                                <div className="space-y-2">
+                                                    {details.map((d) => {
+                                                        // Thông tin sản phẩm đi kèm dòng chi tiết đơn
+                                                        const p = d.san_pham || d.sanPham || {};
+
+                                                        return (
+                                                            <div key={d.id} className="flex items-center gap-3">
+                                                                <div className="w-12 h-12 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+                                                                    <img
+                                                                        src={p.hinh_anh_url || p.hinh_anh || "/images/no-image.png"}
+                                                                        alt={p.ten || "Sản phẩm"}
+                                                                        className="w-full h-full object-contain"
+                                                                    />
+                                                                </div>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                                                                        {p.ten || "Sản phẩm"}
+                                                                    </p>
+                                                                    <p className="text-[11px] text-slate-500">
+                                                                        {formatCurrency(Number(d.gia))} × {d.so_luong}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Dòng cuối: tổng tiền + nút hủy */}
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-slate-500">Tổng thanh toán:</span>
+                                                        <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
+                                                            {formatCurrency(Number(order.tong_tien) || 0)}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Nút hủy chỉ hiện khi đơn đang chờ xử lý */}
+                                                    {canCancel && (
+                                                        <button
+                                                            type="button"
+                                                            disabled={cancelingId === order.id}
+                                                            onClick={() => handleCancelOrder(order)}
+                                                            className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-50 transition"
+                                                        >
+                                                            {cancelingId === order.id ? "Đang hủy..." : "Hủy đơn hàng"}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     )}

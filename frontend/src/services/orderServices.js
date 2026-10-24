@@ -82,3 +82,31 @@ export async function updateOrderStatus(id, trangThai) {
         throw error;
     }
 }
+
+// 7. Lấy danh sách đơn hàng CỦA NGƯỜI DÙNG ĐANG ĐĂNG NHẬP
+// (khác getAllOrders: hàm đó lấy đơn của tất cả mọi người, dùng cho trang quản trị)
+export async function getMyOrders() {
+    try {
+        // Gọi GET /orders/my, token được axiosClient tự gắn vào header
+        const res = await axiosClient.get("/orders/my");
+
+        return res;
+    } catch (error) {
+        console.error("Lỗi lấy đơn hàng của tôi:", error);
+        // throw để trang Profile bắt lỗi và hiện thông báo "Không thể tải đơn hàng"
+        throw error;
+    }
+}
+
+// 8. Khách tự hủy đơn hàng của mình (chỉ hủy được đơn đang "Chờ xử lý")
+export async function cancelMyOrder(id) {
+    try {
+        // Gọi PATCH /orders/{id}/cancel
+        const res = await axiosClient.patch(`/orders/${id}/cancel`);
+
+        return res;
+    } catch (error) {
+        console.error(`Lỗi hủy đơn hàng ID ${id}:`, error);
+        throw error;
+    }
+}
