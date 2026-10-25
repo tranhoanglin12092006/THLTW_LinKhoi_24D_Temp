@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatCurrency } from "@/utils/formatCurrency";
 import API_CONFIG from "@/config/api";
+import { addToLocalCart } from "@/services/cartStorage";
+import { showToast } from "@/components/common/Toast";
 
 /**
  * Component hiển thị thẻ sản phẩm (ProductCard)
@@ -182,30 +184,21 @@ export default function ProductCard({ product, type }) {
                             onClick={(e) => {
                                 e.preventDefault();
                                 try {
-                                    const stored = localStorage.getItem("technova_cart");
-                                    let cart = stored ? JSON.parse(stored) : [];
-                                    const existingIndex = cart.findIndex((item) => String(item.id) === String(id));
                                     const itemPrice = hasDiscount ? salePrice : price;
-
-                                    if (existingIndex > -1) {
-                                        cart[existingIndex].quantity = (cart[existingIndex].quantity || 1) + 1;
-                                    } else {
-                                        cart.push({
-                                            id,
-                                            name,
-                                            slug,
-                                            price: itemPrice,
-                                            originalPrice: price,
-                                            imageUrl,
-                                            quantity: 1,
-                                            selected: true,
-                                        });
-                                    }
-                                    localStorage.setItem("technova_cart", JSON.stringify(cart));
-                                    window.dispatchEvent(new Event("cartUpdated"));
-                                    alert(`✓ Đã thêm "${name}" vào giỏ hàng!`);
+                                    addToLocalCart({
+                                        id,
+                                        productId: id,
+                                        name,
+                                        slug,
+                                        price: itemPrice,
+                                        originalPrice: price,
+                                        imageUrl,
+                                        selected: true,
+                                    }, 1);
+                                    showToast.success(`Đã thêm "${name}" vào giỏ hàng!`);
                                 } catch (err) {
                                     console.error("Lỗi thêm vào giỏ hàng:", err);
+                                    showToast.error("Không thể thêm vào giỏ hàng!");
                                 }
                             }}
                         >

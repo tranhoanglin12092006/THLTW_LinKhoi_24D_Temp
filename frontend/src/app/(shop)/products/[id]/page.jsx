@@ -12,6 +12,8 @@ import {
     getOrCreateGuestCart,
     addCartItem,
 } from "@/services/cartServices";
+import { addToLocalCart } from "@/services/cartStorage";
+import { showToast } from "@/components/common/Toast";
 
 // Dinh dang gia tien
 function formatPrice(price) {
@@ -266,6 +268,13 @@ export default function ProductDetailPage() {
     function showNotice(message, type = "success") {
         setNotice(message);
         setNoticeType(type);
+        if (type === "error") {
+            showToast.error(message);
+        } else if (type === "warning") {
+            showToast.warning(message);
+        } else {
+            showToast.success(message);
+        }
     }
 
     // Them san pham vao gio hang bang localStorage
@@ -388,29 +397,43 @@ export default function ProductDetailPage() {
         setAddingToCart(true);
 
         try {
-            // Lay ma phien khach hang
-            const sessionId = getSessionId();
+            // 1. Luôn lưu vào giỏ hàng localStorage theo user
+            const price = Number(product.gia ?? product.price ?? 0);
+            const salePrice = Number(product.gia_khuyen_mai ?? product.sale_price ?? 0);
+            const finalPrice = salePrice > 0 && salePrice < price ? salePrice : price;
+            const images = getProductImages(product);
 
-            // Lay hoac tao gio hang trong database
-            const response = await getOrCreateGuestCart(sessionId);
-            const cart = response?.data;
+            addToLocalCart({
+                id: product.id,
+                productId: product.id,
+                name: product.ten || product.product_name,
+                slug: product.duong_dan || product.slug || String(product.id),
+                price: finalPrice,
+                originalPrice: price,
+                imageUrl: images[0] || "",
+                selected: true,
+            }, Number(quantity));
 
-            if (!cart?.id) {
-                console.error("Du lieu gio hang:", response);
-                throw new Error("Khong lay duoc ID gio hang.");
+            // 2. Thử đồng bộ thêm vào database nếu có session
+            try {
+                const sessionId = getSessionId();
+                const response = await getOrCreateGuestCart(sessionId);
+                const cart = response?.data;
+
+                if (cart?.id) {
+                    await addCartItem({
+                        gio_hang_id: cart.id,
+                        san_pham_id: product.id,
+                        so_luong: Number(quantity),
+                    });
+                }
+            } catch (dbErr) {
+                // Không gián đoạn nếu API backend có lỗi
             }
-
-            // Them san pham vao gio hang trong database
-            const result = await addCartItem({
-                gio_hang_id: cart.id,
-                san_pham_id: product.id,
-                so_luong: Number(quantity),
-            });
-
-            console.log("Ket qua them gio hang:", result);
 
             // Cap nhat so luong gio hang tren giao dien
             window.dispatchEvent(new Event("cartUpdated"));
+            window.dispatchEvent(new Event("cart:updated"));
 
             if (buyNow) {
                 router.push("/cart");
@@ -420,17 +443,7 @@ export default function ProductDetailPage() {
             showNotice("Đã thêm sản phẩm vào giỏ hàng!");
         } catch (error) {
             console.error("Loi them gio hang:", error);
-            console.error(
-                "Phan hoi tu Laravel:",
-                error?.response?.data
-            );
-
-            showNotice(
-                error?.response?.data?.message ||
-                    error?.message ||
-                    "Không thể thêm sản phẩm vào giỏ hàng.",
-                "error"
-            );
+            showNotice("Không thể thêm sản phẩm vào giỏ hàng.", "error");
         } finally {
             setAddingToCart(false);
         }

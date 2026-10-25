@@ -8,6 +8,8 @@ import SearchBox from "./SearchBox";
 // Đổi đúng đường dẫn/tên hàm đăng xuất trong project của bạn
 import { logoutUser } from "@/services/authServices";
 import { getOrCreateGuestCart } from "@/services/cartServices";
+import { getLocalCartCount, isUserLoggedIn } from "@/services/cartStorage";
+import { showToast } from "@/components/common/Toast";
 
 export default function Header() {
     const router = useRouter();
@@ -15,21 +17,29 @@ export default function Header() {
     const [cartCount, setCartCount] = useState(0);
     const [currentUser, setCurrentUser] = useState(null);
 
-    // Dat ben trong component Header
+    // Đếm số lượng sản phẩm trong giỏ hàng (ưu tiên localStorage theo tài khoản)
     const loadCartCount = async () => {
         try {
-            let sessionId = localStorage.getItem("cart_session_id");
-            if (!sessionId) {
-                setCartCount(0);
+            // Lấy trực tiếp từ localStorage theo user
+            const localCount = getLocalCartCount();
+            if (localCount > 0) {
+                setCartCount(localCount);
                 return;
             }
-            const res = await getOrCreateGuestCart(sessionId);
-            const items = res?.data?.chi_tiet_gio_hang || [];
-            setCartCount(
-                items.reduce((sum, item) => sum + Number(item.so_luong || 1), 0)
-            );
-        } catch (e) {
+
+            // Fallback lấy từ database nếu có session_id
+            let sessionId = localStorage.getItem("cart_session_id");
+            if (sessionId) {
+                const res = await getOrCreateGuestCart(sessionId);
+                const items = res?.data?.chi_tiet_gio_hang || [];
+                const dbCount = items.reduce((sum, item) => sum + Number(item.so_luong || 1), 0);
+                setCartCount(dbCount);
+                return;
+            }
+
             setCartCount(0);
+        } catch (e) {
+            setCartCount(getLocalCartCount());
         }
     };
 
@@ -44,15 +54,30 @@ export default function Header() {
         }
     }, [pathname]);
 
-    // Cap nhat khi them san pham (su kien "cart:updated" tu trang Products)
+    // Cap nhat khi them san pham (su kien "cart:updated" va "cartUpdated")
     useEffect(() => {
         const handler = () => loadCartCount();
         window.addEventListener("cart:updated", handler);
-        return () => window.removeEventListener("cart:updated", handler);
+        window.addEventListener("cartUpdated", handler);
+        window.addEventListener("userUpdated", handler);
+        return () => {
+            window.removeEventListener("cart:updated", handler);
+            window.removeEventListener("cartUpdated", handler);
+            window.removeEventListener("userUpdated", handler);
+        };
     }, []);
 
     
 
+
+    // Xử lý khi click vào icon giỏ hàng: bắt buộc đăng nhập mới được xem
+    const handleCartClick = (e) => {
+        if (!isUserLoggedIn()) {
+            e.preventDefault();
+            showToast.warning("Vui lòng đăng nhập tài khoản để xem giỏ hàng của bạn!");
+            router.push(`/login?redirect=${encodeURIComponent("/cart")}`);
+        }
+    };
 
     // Xử lý đăng xuất
     const handleLogout = async () => {
@@ -298,11 +323,11 @@ export default function Header() {
                                 </div>
                             </div>
                             {/* Cart */}
-                            {/* Cart */}
                             <a
                                 href="/cart"
+                                onClick={handleCartClick}
                                 data-cart-icon
-                                className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 relative"
+                                className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 relative cursor-pointer"
                                 title="Giỏ hàng"
                             >
                                 <i data-lucide="shopping-cart" className="w-5 h-5" />

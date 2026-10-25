@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { getMe, updateProfile, changePassword, logoutUser } from "@/services/authServices";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { getMyOrders, cancelMyOrder } from "@/services/orderServices";
+import { showToast } from "@/components/common/Toast";
+import OrderDetailModal from "@/components/shop/orders/OrderDetailModal";
 
 
 // Bảng chuyển mã trạng thái (số) thành chữ + màu hiển thị
@@ -69,13 +71,7 @@ export default function ProfilePage() {
         mat_khau_moi_confirmation: "",
     });
 
-    // 5. Thông báo Toast Popup
-    const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
-    const showToast = (message, type = "success") => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3500);
-    };
 
     // 6. Lấy thông tin user khi vừa vào trang (GET /api/me)
     const fetchUserData = async () => {
@@ -255,6 +251,30 @@ export default function ProfilePage() {
     const [ordersError, setOrdersError] = useState("");        // lỗi khi tải đơn
     const [cancelingId, setCancelingId] = useState(null);      // id đơn đang bấm hủy
 
+    // Modal xem chi tiết đơn hàng
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+
+    const handleViewDetail = (order) => {
+        setSelectedOrder(order);
+        setShowDetailModal(true);
+    };
+
+    const handleCloseDetail = () => {
+        setShowDetailModal(false);
+        setSelectedOrder(null);
+    };
+
+    // Tự động chuyển đến tab Đơn hàng nếu URL có ?tab=orders
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("tab") === "orders") {
+                setActiveTab("orders");
+            }
+        }
+    }, []);
+
     // Gọi API lấy đơn hàng của người dùng đang đăng nhập
     const loadOrders = async () => {
         try {
@@ -289,9 +309,10 @@ export default function ProfilePage() {
         try {
             setCancelingId(order.id);      // khóa nút trong lúc chờ
             await cancelMyOrder(order.id);
+            showToast.success(`Đã hủy đơn hàng ${order.ma_don_hang} thành công!`);
             await loadOrders();            // tải lại để thấy trạng thái mới
         } catch (err) {
-            alert(err?.response?.data?.message || "Không thể hủy đơn hàng.");
+            showToast.error(err?.response?.data?.message || "Không thể hủy đơn hàng.");
         } finally {
             setCancelingId(null);
         }
@@ -323,21 +344,6 @@ export default function ProfilePage() {
                     Tài khoản cá nhân
                 </span>
             </nav>
-
-            {/* Thông báo Toast Popup */}
-            {toast.show && (
-                <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-                    <div className={`px-5 py-3 rounded-2xl text-white font-semibold text-xs shadow-2xl flex items-center gap-2 ${toast.type === "error" ? "bg-red-600 shadow-red-600/30" : "bg-emerald-600 shadow-emerald-600/30"
-                        }`}>
-                        {toast.type === "error" ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                        ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
-                        )}
-                        <span>{toast.message}</span>
-                    </div>
-                </div>
-            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
@@ -654,9 +660,14 @@ export default function ProfilePage() {
                                                 {/* Dòng đầu: mã đơn, ngày đặt, nhãn trạng thái */}
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800/80">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                                                            {order.ma_don_hang}
-                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleViewDetail(order)}
+                                                            className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                                            title="Bấm để xem chi tiết đơn hàng"
+                                                        >
+                                                            <span>#{order.ma_don_hang}</span>
+                                                        </button>
                                                         <span className="text-xs text-slate-400">
                                                             • Ngày đặt:{" "}
                                                             {order.created_at
@@ -699,7 +710,7 @@ export default function ProfilePage() {
                                                     })}
                                                 </div>
 
-                                                {/* Dòng cuối: tổng tiền + nút hủy */}
+                                                {/* Dòng cuối: tổng tiền + nút xem chi tiết + nút hủy */}
                                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/80">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-slate-500">Tổng thanh toán:</span>
@@ -708,17 +719,28 @@ export default function ProfilePage() {
                                                         </span>
                                                     </div>
 
-                                                    {/* Nút hủy chỉ hiện khi đơn đang chờ xử lý */}
-                                                    {canCancel && (
+                                                    <div className="flex items-center gap-2">
                                                         <button
                                                             type="button"
-                                                            disabled={cancelingId === order.id}
-                                                            onClick={() => handleCancelOrder(order)}
-                                                            className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-bold hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-50 transition"
+                                                            onClick={() => handleViewDetail(order)}
+                                                            className="px-3.5 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-blue-200/60 dark:border-blue-900/40 shadow-sm"
                                                         >
-                                                            {cancelingId === order.id ? "Đang hủy..." : "Hủy đơn hàng"}
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                            <span>Xem chi tiết</span>
                                                         </button>
-                                                    )}
+
+                                                        {/* Nút hủy chỉ hiện khi đơn đang chờ xử lý */}
+                                                        {canCancel && (
+                                                            <button
+                                                                type="button"
+                                                                disabled={cancelingId === order.id}
+                                                                onClick={() => handleCancelOrder(order)}
+                                                                className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-bold text-xs hover:bg-rose-50 dark:hover:bg-rose-950/30 disabled:opacity-50 transition cursor-pointer"
+                                                            >
+                                                                {cancelingId === order.id ? "Đang hủy..." : "Hủy đơn hàng"}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
@@ -853,6 +875,14 @@ export default function ProfilePage() {
 
                 </section>
             </div>
+
+            {/* Modal xem chi tiết đơn hàng */}
+            <OrderDetailModal
+                open={showDetailModal}
+                order={selectedOrder}
+                onClose={handleCloseDetail}
+                onCancelOrder={handleCancelOrder}
+            />
         </main>
     );
 }

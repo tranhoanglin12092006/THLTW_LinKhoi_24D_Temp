@@ -10,6 +10,8 @@ import { getAllProducts } from "@/services/productServices";
 import { getAllCategories } from "@/services/categoryServices";
 import { useRouter } from "next/navigation";
 import { getOrCreateGuestCart, addCartItem } from "@/services/cartServices";
+import { addToLocalCart } from "@/services/cartStorage";
+import { showToast } from "@/components/common/Toast";
 
 
 
@@ -460,22 +462,40 @@ export default function Products() {
 
 
 
-    // Them san pham vao gio hang trong database
+    // Them san pham vao gio hang trong localStorage va database
     const addToCart = async (product) => {
-        const sessionId = getSessionId();
-        const response = await getOrCreateGuestCart(sessionId);
-        const cartId = response?.data?.id;
+        // 1. Luu vao localStorage theo tai khoan
+        addToLocalCart({
+            id: product.id,
+            productId: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: product.price,
+            originalPrice: product.originalPrice || product.price,
+            imageUrl: product.imageUrl,
+            selected: true,
+        }, 1);
 
-        if (!cartId) throw new Error("Khong lay duoc gio hang.");
+        // 2. Dong bo them vao database neu co session
+        try {
+            const sessionId = getSessionId();
+            const response = await getOrCreateGuestCart(sessionId);
+            const cartId = response?.data?.id;
 
-        await addCartItem({
-            gio_hang_id: cartId,
-            san_pham_id: product.id,
-            so_luong: 1,
-        });
+            if (cartId) {
+                await addCartItem({
+                    gio_hang_id: cartId,
+                    san_pham_id: product.id,
+                    so_luong: 1,
+                });
+            }
+        } catch (dbErr) {
+            // Khong gian doan neu API loi
+        }
 
-        // Bao cho header cap nhat so luong (neu co lang nghe)
+        // Bao cho header cap nhat so luong
         window.dispatchEvent(new Event("cart:updated"));
+        window.dispatchEvent(new Event("cartUpdated"));
     };
 
     // Bam icon gio hang: them vao gio + hieu ung bay
@@ -490,9 +510,10 @@ export default function Products() {
             setAddingId(product.id);
             flyToCart(imgEl);
             await addToCart(product);
+            showToast.success(`Đã thêm "${product.name}" vào giỏ hàng!`);
         } catch (err) {
             console.error("Loi them vao gio:", err);
-            alert(
+            showToast.error(
                 err?.response?.data?.message ||
                 "Không thể thêm vào giỏ hàng. Vui lòng thử lại."
             );
@@ -511,7 +532,7 @@ export default function Products() {
             router.push("/cart?checkout=1");
         } catch (err) {
             console.error("Loi mua ngay:", err);
-            alert(
+            showToast.error(
                 err?.response?.data?.message ||
                 "Không thể xử lý. Vui lòng thử lại."
             );

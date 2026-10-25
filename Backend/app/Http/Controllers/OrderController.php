@@ -252,7 +252,7 @@ class OrderController extends Controller
     public function show($id)
     {
         // Tìm đơn hàng theo ID
-        $order = Order::with('chiTietDonHangs')
+        $order = Order::with('chiTietDonHangs.sanPham')
             ->findOrFail($id);
 
         return new OrderResource($order);
