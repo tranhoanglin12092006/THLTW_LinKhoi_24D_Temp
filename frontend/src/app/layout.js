@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./style.css";
 import Script from "next/script";
+import ToastContainer from "@/components/common/Toast";
 
 export const metadata = {
   title: "TECHNOVA - Siêu Thị Thiết Bị Điện Tử & Công Nghệ Cao Cấp",
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col antialiased">
+        <ToastContainer />
         {children}
         <Script
           src="https://unpkg.com/lucide@latest"

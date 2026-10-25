@@ -10,6 +10,16 @@ import {
     deleteCartItem,
 } from "@/services/cartServices";
 import { formatCurrency } from "@/utils/formatCurrency";
+import {
+    getLocalCart,
+    saveLocalCart,
+    updateLocalCartQuantity,
+    removeLocalCartItem,
+    clearLocalCart,
+    isUserLoggedIn,
+} from "@/services/cartStorage";
+import { showToast } from "@/components/common/Toast";
+import { getMe } from "@/services/authServices";
 
 // Tao ma phien rieng cho gio hang khach
 function getSessionId() {
@@ -77,6 +87,7 @@ export default function Cart() {
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderCode, setOrderCode] = useState("");
     // Luu thong tin nguoi nhan hang
+    const [currentUser, setCurrentUser] = useState(null);
     const [customer, setCustomer] = useState({
         ten_nguoi_nhan: "",
         so_dien_thoai: "",
@@ -84,8 +95,55 @@ export default function Cart() {
         phuong_thuc_thanh_toan: "cod",
     });
 
+    // Tu dong dien thong tin nguoi nhan tu tai khoan dang dang nhap
+    useEffect(() => {
+        const applyUserData = (user) => {
+            if (!user) return;
+            setCurrentUser(user);
+            setCustomer((prev) => ({
+                ...prev,
+                ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || user.name || "",
+                so_dien_thoai: prev.so_dien_thoai || user.so_dien_thoai || user.phone || user.dien_thoai || "",
+                dia_chi: prev.dia_chi || user.dia_chi || user.address || "",
+            }));
+        };
 
-    // Lay gio hang tu database khi mo trang
+        // 1. Doc ngay tu localStorage de dien lap tuc
+        try {
+            const userStr = localStorage.getItem("user");
+            if (userStr) {
+                const parsed = JSON.parse(userStr);
+                applyUserData(parsed);
+            }
+        } catch (err) {
+            console.error("Loi doc user tu localStorage:", err);
+        }
+
+        // 2. Goi them getMe() tu backend de lay du lieu moi nhat (sdt, dia chi)
+        getMe()
+            .then((res) => {
+                const user = res?.user || res?.data || res;
+                if (user) {
+                    applyUserData(user);
+                    try {
+                        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+                        localStorage.setItem("user", JSON.stringify({ ...localUser, ...user }));
+                    } catch (e) {}
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+
+    // Kiểm tra đăng nhập: Chưa đăng nhập thì không được xem giỏ hàng
+    useEffect(() => {
+        if (!isUserLoggedIn()) {
+            showToast.warning("Vui lòng đăng nhập tài khoản để xem giỏ hàng của bạn!");
+            router.push(`/login?redirect=${encodeURIComponent("/cart")}`);
+        }
+    }, [router]);
+
+    // Lay gio hang tu database & localStorage khi mo trang
     useEffect(() => {
         let cancelled = false;
 
@@ -94,21 +152,48 @@ export default function Cart() {
                 setLoading(true);
                 setErrorMessage("");
 
+                // 1. Đọc giỏ hàng đã lưu trong localStorage trước
+                const localItems = getLocalCart();
+
                 const currentSessionId = getSessionId();
                 if (cancelled) return;
 
                 setSessionId(currentSessionId);
 
-                const response =
-                    await getOrCreateGuestCart(currentSessionId);
+                // 2. Tải thêm từ database (nếu có)
+                let mapped = [];
+                try {
+                    const response = await getOrCreateGuestCart(currentSessionId);
+                    if (!cancelled) {
+                        const cart = response?.data;
+                        mapped = mapCartItems(cart);
+                        setCartId(cart?.id || null);
+                    }
+                } catch (apiErr) {
+                    // Nếu lỗi API vẫn dùng giỏ hàng localStorage
+                }
 
                 if (cancelled) return;
 
-                const cart = response?.data;
-                const mapped = mapCartItems(cart);
+                // 3. Hợp nhất giữa localItems và mapped từ database
+                let merged = [...localItems];
+                for (const dbItem of mapped) {
+                    const exists = merged.find((item) => String(item.id || item.productId) === String(dbItem.productId || dbItem.id));
+                    if (!exists) {
+                        merged.push(dbItem);
+                    }
+                }
 
-                setCartId(cart?.id || null);
-                setCartItems(mapped);
+                // Đảm bảo các thuộc tính id, productId, selected đầy đủ
+                merged = merged.map((item) => ({
+                    ...item,
+                    id: item.id || item.productId,
+                    productId: item.productId || item.id,
+                    selected: item.selected !== undefined ? item.selected : true,
+                }));
+
+                setCartItems(merged);
+                saveLocalCart(merged);
 
                 // Tu dong vao thanh toan khi den tu nut "Mua ngay"
                 const wantCheckout =
@@ -126,14 +211,12 @@ export default function Cart() {
                         return;
                     }
 
-                    if (mapped.length > 0) setShowCheckout(true);
+                    if (merged.length > 0) setShowCheckout(true);
                 }
             } catch (error) {
                 if (!cancelled) {
-                    setErrorMessage(
-                        error?.response?.data?.message ||
-                        "Khong the tai gio hang. Vui long thu lai."
-                    );
+                    const localItems = getLocalCart();
+                    setCartItems(localItems);
                 }
             } finally {
                 if (!cancelled) {
@@ -149,7 +232,7 @@ export default function Cart() {
         };
     }, []);
 
-    // Cap nhat so luong trong database
+    // Cap nhat so luong trong database & localStorage
     const handleUpdateQuantity = async (id, delta) => {
         const item = cartItems.find((product) => product.id === id);
         if (!item || processing) return;
@@ -157,56 +240,55 @@ export default function Cart() {
         const newQuantity = item.quantity + delta;
         if (newQuantity < 1) return;
 
+        // Cập nhật ngay trên state và localStorage
+        const updatedItems = cartItems.map((product) =>
+            product.id === id
+                ? { ...product, quantity: newQuantity }
+                : product
+        );
+        setCartItems(updatedItems);
+        saveLocalCart(updatedItems);
+
         try {
             setErrorMessage("");
-
-            await updateCartItem(id, {
-                gio_hang_id: cartId,
-                san_pham_id: item.productId,
-                so_luong: newQuantity,
-            });
-
-            setCartItems((prev) =>
-                prev.map((product) =>
-                    product.id === id
-                        ? { ...product, quantity: newQuantity }
-                        : product
-                )
-            );
+            if (cartId && item.productId) {
+                await updateCartItem(id, {
+                    gio_hang_id: cartId,
+                    san_pham_id: item.productId,
+                    so_luong: newQuantity,
+                });
+            }
         } catch (error) {
-            setErrorMessage(
-                error?.response?.data?.message ||
-                "Khong the cap nhat so luong."
-            );
+            // Đã lưu thành công vào localStorage
         }
     };
 
-    // Xoa mot san pham khoi database
+    // Xoa mot san pham khoi database & localStorage
     const handleRemoveItem = async (id) => {
+        const updatedItems = cartItems.filter((item) => item.id !== id);
+        setCartItems(updatedItems);
+        saveLocalCart(updatedItems);
+        showToast.success("Đã xóa sản phẩm khỏi giỏ hàng");
+
         try {
             setErrorMessage("");
             await deleteCartItem(id);
-
-            setCartItems((prev) =>
-                prev.filter((item) => item.id !== id)
-            );
         } catch (error) {
-            setErrorMessage(
-                error?.response?.data?.message ||
-                "Khong the xoa san pham."
-            );
+            // Đã xóa trên localStorage
         }
     };
 
     // Chon hoac bo chon san pham tren giao dien
     const handleToggleSelect = (id) => {
-        setCartItems((prev) =>
-            prev.map((item) =>
+        setCartItems((prev) => {
+            const next = prev.map((item) =>
                 item.id === id
                     ? { ...item, selected: !item.selected }
                     : item
-            )
-        );
+            );
+            saveLocalCart(next);
+            return next;
+        });
     };
 
     const isAllSelected =
@@ -216,28 +298,28 @@ export default function Cart() {
     const handleToggleSelectAll = () => {
         const nextState = !isAllSelected;
 
-        setCartItems((prev) =>
-            prev.map((item) => ({ ...item, selected: nextState }))
-        );
+        setCartItems((prev) => {
+            const next = prev.map((item) => ({ ...item, selected: nextState }));
+            saveLocalCart(next);
+            return next;
+        });
     };
 
     // Xoa toan bo san pham trong gio hang
     const handleClearCart = async () => {
         if (processing) return;
 
+        setCartItems([]);
+        clearLocalCart();
+        showToast.info("Đã làm trống giỏ hàng");
+
         try {
             setErrorMessage("");
-
             await Promise.all(
                 cartItems.map((item) => deleteCartItem(item.id))
             );
-
-            setCartItems([]);
         } catch (error) {
-            setErrorMessage(
-                error?.response?.data?.message ||
-                "Khong the xoa toan bo gio hang."
-            );
+            // Đã xóa trên localStorage
         }
     };
 
@@ -301,6 +383,7 @@ export default function Cart() {
 
             setOrderCode(order?.ma_don_hang || "Don hang da duoc tao");
             setCartItems([]);
+            clearLocalCart();
             setShowCheckout(false);
             setOrderSuccess(true);
 
@@ -372,10 +455,10 @@ export default function Cart() {
 
                         <button
                             type="button"
-                            onClick={() => router.push("/orders")}
-                            className="rounded-xl border border-slate-200 dark:border-slate-700 px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            onClick={() => router.push("/profile?tab=orders")}
+                            className="rounded-xl border border-slate-200 dark:border-slate-700 px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                         >
-                            Xem đơn hàng của tôi
+                            Xem chi tiết đơn hàng của tôi
                         </button>
                     </div>
                 </div>
@@ -415,18 +498,36 @@ export default function Cart() {
                         {/* Thong tin nhan hang va phuong thuc thanh toan */}
                         <div className="lg:col-span-8 space-y-6">
                             <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7">
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    Địa chỉ nhận hàng
-                                </h2>
-
-                                <p className="mt-1 mb-5 text-sm text-slate-500 dark:text-slate-400">
-                                    Nhập thông tin để đơn hàng được giao đúng địa chỉ.
-                                </p>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-5 border-b border-slate-100 dark:border-slate-800 gap-2">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-blue-400">
+                                                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                                                <circle cx="12" cy="10" r="3"/>
+                                            </svg>
+                                            Địa chỉ nhận hàng
+                                        </h2>
+                                        <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                            Thông tin được tự động điền từ tài khoản, bạn có thể chỉnh sửa nếu gửi đến người nhận khác.
+                                        </p>
+                                    </div>
+                                    {currentUser && (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-xs font-semibold border border-emerald-200 dark:border-emerald-800/60 self-start sm:self-auto shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                            Đã tự động điền từ tài khoản
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            Họ và tên người nhận
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Họ và tên người nhận <span className="text-rose-500">*</span></span>
+                                            {currentUser?.ho_ten && (
+                                                <span className="text-xs font-normal text-slate-400">Tài khoản: {currentUser.ho_ten}</span>
+                                            )}
                                         </label>
 
                                         <input
@@ -438,15 +539,20 @@ export default function Cart() {
                                                     ten_nguoi_nhan: e.target.value,
                                                 })
                                             }
-                                            placeholder="Nhập họ và tên"
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            placeholder="Nhập họ và tên người nhận"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                             required
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            Số điện thoại
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Số điện thoại <span className="text-rose-500">*</span></span>
+                                            {currentUser?.so_dien_thoai ? (
+                                                <span className="text-xs font-normal text-slate-400">Mặc định: {currentUser.so_dien_thoai}</span>
+                                            ) : (
+                                                <span className="text-xs font-normal text-amber-500">Chưa lưu SĐT trong hồ sơ</span>
+                                            )}
                                         </label>
 
                                         <input
@@ -458,15 +564,20 @@ export default function Cart() {
                                                     so_dien_thoai: e.target.value,
                                                 })
                                             }
-                                            placeholder="Nhập số điện thoại"
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            placeholder="Nhập số điện thoại nhận hàng"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                             required
                                         />
                                     </div>
 
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                            Địa chỉ giao hàng
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Địa chỉ giao hàng <span className="text-rose-500">*</span></span>
+                                            {currentUser?.dia_chi ? (
+                                                <span className="text-xs font-normal text-slate-400">Địa chỉ đã lưu</span>
+                                            ) : (
+                                                <span className="text-xs font-normal text-amber-500">Chưa lưu địa chỉ trong hồ sơ</span>
+                                            )}
                                         </label>
 
                                         <textarea
@@ -479,7 +590,7 @@ export default function Cart() {
                                             }
                                             placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"
                                             rows={3}
-                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                             required
                                         />
                                     </div>
