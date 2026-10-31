@@ -26,6 +26,10 @@ public function rules(): array
                 'phuong_thuc_thanh_toan' => 'required|string|max:100',
                 'khuyen_mai_id' => 'nullable|exists:khuyen_mai,id',
                 'session_id' => 'nullable|string|min:32|max:100',
+                'bank_code' => 'nullable|string|max:50',
+                'items' => 'nullable|array',
+                'items.*.san_pham_id' => 'nullable|integer',
+                'items.*.so_luong' => 'nullable|integer|min:1',
             ];
         }
 

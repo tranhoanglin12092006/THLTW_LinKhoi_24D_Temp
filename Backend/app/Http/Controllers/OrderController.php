@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Services\PHPMailerService;
+use App\Services\VNPayService;
 
 class OrderController extends Controller
 {
@@ -51,10 +52,9 @@ class OrderController extends Controller
         $order = DB::transaction(function () use ($data, $user) {
             $cart = null;
 
-            // Uu tien gio dang hien tren giao dien (theo session_id)
+            // Uu tien gio theo session_id
             if (!empty($data['session_id'])) {
-                $cart = Cart::whereNull('nguoi_dung_id')
-                    ->where('session_id', $data['session_id'])
+                $cart = Cart::where('session_id', $data['session_id'])
                     ->lockForUpdate()
                     ->first();
             }
@@ -70,16 +70,29 @@ class OrderController extends Controller
                 'cart_id' => $cart?->id,
                 'cart_user_id' => $cart?->nguoi_dung_id,
                 'cart_session_id' => $cart?->session_id,
+                'has_request_items' => !empty($data['items']),
             ]);
 
-            if (!$cart) {
-                throw new \RuntimeException('Khong tim thay gio hang.');
+            // Lay danh sach san pham can dat:
+            // Uu tien lay tu request do frontend truyen len (tu gio hang localStorage)
+            $items = [];
+            if (!empty($data['items']) && is_array($data['items'])) {
+                foreach ($data['items'] as $it) {
+                    $pid = $it['san_pham_id'] ?? $it['productId'] ?? ($it['id'] ?? null);
+                    $qty = (int) ($it['so_luong'] ?? $it['quantity'] ?? 1);
+                    if ($pid && $qty > 0) {
+                        $items[] = (object) [
+                            'san_pham_id' => $pid,
+                            'so_luong' => $qty,
+                        ];
+                    }
+                }
+            } elseif ($cart) {
+                // Neu frontend khong gui truc tiep, lay tu bang chi_tiet_gio_hang trong database
+                $items = $cart->chiTietGioHangs()->get();
             }
 
-            // Lay cac san pham trong gio hang
-            $items = $cart->chiTietGioHangs()->get();
-
-            if ($items->isEmpty()) {
+            if (empty($items) || (is_countable($items) && count($items) === 0)) {
                 throw new \RuntimeException('Gio hang dang trong.');
             }
 
@@ -148,8 +161,10 @@ class OrderController extends Controller
                 $order->chiTietDonHangs()->create($detail);
             }
 
-            // Xoa cac san pham da dat khoi gio hang
-            $cart->chiTietGioHangs()->delete();
+            // Xoa cac san pham da dat khoi gio hang database (neu co)
+            if ($cart) {
+                $cart->chiTietGioHangs()->delete();
+            }
 
             return $order;
         });
@@ -158,19 +173,28 @@ class OrderController extends Controller
         $order->load(['chiTietDonHangs.sanPham', 'nguoiDung']);
 
         // ====================================================================
-        // GỬI EMAIL XÁC NHẬN ĐƠN HÀNG QUA PHPMAILER
-        // 1. Lấy địa chỉ email khách nhận: ưu tiên email nhập trên form thanh toán,
-        //    nếu không có thì lấy email của tài khoản đang đăng nhập.
-        // 2. Gọi hàm sendOrderConfirmation() của PHPMailerService để gửi thư.
+        // XỬ LÝ THANH TOÁN THEO PHƯƠNG THỨC
         // ====================================================================
-        $customerEmail = !empty($data['email']) ? $data['email'] : ($user?->email ?? $order->nguoiDung?->email);
-        if ($customerEmail) {
-            PHPMailerService::sendOrderConfirmation($order, $customerEmail);
+        $paymentUrl = null;
+
+        if ($order->phuong_thuc_thanh_toan === 'vnpay') {
+            // Khách chọn thanh toán bằng VNPAY / VNPAY-QR
+            // Tạo đường dẫn thanh toán VNPAY
+            $bankCode = $request->input('bank_code'); // Có thể là VNPAYQR, VNBANK, hoặc để trống cho khách tự chọn
+            $paymentUrl = VNPayService::createPaymentUrl($order, $request->ip(), $bankCode);
+        } else {
+            // Phương thức COD hoặc Chuyển khoản thông thường:
+            // Gửi email xác nhận đặt hàng ngay qua PHPMailer
+            $customerEmail = !empty($data['email']) ? $data['email'] : ($user?->email ?? $order->nguoiDung?->email);
+            if ($customerEmail) {
+                PHPMailerService::sendOrderConfirmation($order, $customerEmail);
+            }
         }
 
         return response()->json([
             'message' => 'Dat hang thanh cong.',
             'data' => new OrderResource($order),
+            'payment_url' => $paymentUrl, // URL chuyển hướng sang VNPAY (nếu chọn VNPAY)
         ], 201);
     } catch (\RuntimeException $e) {
         return response()->json([

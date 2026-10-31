@@ -173,6 +173,8 @@
                         <td style="color: #0f172a; padding: 4px 0; border: none;">
                             @if($order->phuong_thuc_thanh_toan === 'cod')
                                 Thanh toán khi nhận hàng (COD)
+                            @elseif($order->phuong_thuc_thanh_toan === 'vnpay')
+                                Chuyển khoản qua VNPAY / VNPAY-QR (Đã thanh toán)
                             @elseif($order->phuong_thuc_thanh_toan === 'bank_transfer')
                                 Chuyển khoản ngân hàng
                             @else
