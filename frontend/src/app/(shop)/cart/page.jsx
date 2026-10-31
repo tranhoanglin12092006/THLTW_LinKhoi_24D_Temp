@@ -71,6 +71,13 @@ function mapCartItems(cart) {
     });
 }
 
+// Dieu huong trinh duyet sang cong thanh toan ben ngoai (VNPAY)
+function navigateToExternalUrl(targetUrl) {
+    if (typeof window !== "undefined" && targetUrl) {
+        window.location.assign(targetUrl);
+    }
+}
+
 export default function Cart() {
     const router = useRouter();
 
@@ -86,13 +93,17 @@ export default function Cart() {
     const [showCheckout, setShowCheckout] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderCode, setOrderCode] = useState("");
+    const [createdOrder, setCreatedOrder] = useState(null);
+    const [createdPaymentUrl, setCreatedPaymentUrl] = useState("");
+    const [openingVNPay, setOpeningVNPay] = useState(false);
     // Luu thong tin nguoi nhan hang
     const [currentUser, setCurrentUser] = useState(null);
     const [customer, setCustomer] = useState({
         ten_nguoi_nhan: "",
         so_dien_thoai: "",
+        email: "",
         dia_chi: "",
-        phuong_thuc_thanh_toan: "cod",
+        phuong_thuc_thanh_toan: "vnpay", // Mặc định ưu tiên VNPAY / VNPAY-QR
     });
 
     // Tu dong dien thong tin nguoi nhan tu tai khoan dang dang nhap
@@ -104,6 +115,7 @@ export default function Cart() {
                 ...prev,
                 ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || user.name || "",
                 so_dien_thoai: prev.so_dien_thoai || user.so_dien_thoai || user.phone || user.dien_thoai || "",
+                email: prev.email || user.email || "",
                 dia_chi: prev.dia_chi || user.dia_chi || user.address || "",
             }));
         };
@@ -374,16 +386,62 @@ export default function Cart() {
                 await import("@/lib/axiosClient")
             ).default;
 
+            // Chuẩn bị danh sách sản phẩm đặt hàng từ giỏ hàng hiện tại (localStorage)
+            const orderItems = (selectedItems.length > 0 ? selectedItems : cartItems).map((item) => ({
+                san_pham_id: item.productId || item.id,
+                so_luong: Number(item.quantity || 1),
+            }));
+
+            // Gửi dữ liệu đặt hàng lên backend: họ tên, số điện thoại, địa chỉ, phương thức, email và danh sách sản phẩm
             const response = await axiosClient.post("/orders", {
                 ...customer,
+                email: customer.email || currentUser?.email || "", // Gửi email để backend gửi xác nhận qua PHPMailer
                 session_id: sessionId,
+                items: orderItems,
             });
 
-            const order = response?.data?.data || response?.data;
+            // axiosClient interceptor đã trích xuất sẵn response.data
+            // Cấu trúc server trả về: { message, data: { ...order }, payment_url }
+            const resData = response?.data || response;
+            const order = response?.data?.data || response?.data || response;
+            const paymentUrl = response?.payment_url || resData?.payment_url || response?.data?.payment_url;
 
-            setOrderCode(order?.ma_don_hang || "Don hang da duoc tao");
+            const finalOrderCode = order?.ma_don_hang || "DH_PENDING";
+            setOrderCode(finalOrderCode);
+            setCreatedOrder(order);
+            if (paymentUrl) {
+                setCreatedPaymentUrl(paymentUrl);
+            }
             setCartItems([]);
             clearLocalCart();
+
+            // Nếu khách chọn thanh toán qua VNPAY -> lập tức chuyển hướng sang Cổng thanh toán VNPAY (nơi có mã QR và thẻ ngân hàng)
+            if (customer.phuong_thuc_thanh_toan === "vnpay") {
+                if (paymentUrl) {
+                    showToast.info("Đang chuyển hướng sang Cổng VNPAY để quét mã QR...", 5000);
+                    navigateToExternalUrl(paymentUrl);
+                    return;
+                }
+
+                // Nếu chưa có payment_url ngay, gọi API tạo link thanh toán VNPAY
+                try {
+                    showToast.info("Đang kết nối Cổng VNPAY...", 4000);
+                    const targetId = order?.id || finalOrderCode;
+                    const payRes = await axiosClient.post("/vnpay/create-payment", {
+                        order_id: targetId,
+                    });
+                    const fallbackUrl = payRes?.payment_url || payRes?.data?.payment_url;
+                    if (fallbackUrl) {
+                        setCreatedPaymentUrl(fallbackUrl);
+                        navigateToExternalUrl(fallbackUrl);
+                        return;
+                    }
+                } catch (payErr) {
+                    console.error("Lỗi tạo payment URL dự phòng:", payErr);
+                }
+            }
+
+            // Với phương thức COD hoặc chuyển khoản thường: Hiển thị màn hình đặt hàng thành công
             setShowCheckout(false);
             setOrderSuccess(true);
 
@@ -415,6 +473,40 @@ export default function Cart() {
             setProcessing(false);
         }
     };
+
+    // Hàm mở Cổng thanh toán VNPAY / Quét mã QR khi người dùng nhấn nút
+    const handleOpenVNPay = async () => {
+        try {
+            setOpeningVNPay(true);
+            if (createdPaymentUrl) {
+                showToast.info("Đang mở Cổng thanh toán VNPAY...", 3000);
+                navigateToExternalUrl(createdPaymentUrl);
+                return;
+            }
+
+            showToast.info("Đang kết nối Cổng thanh toán VNPAY...", 3000);
+            const axiosClient = (await import("@/lib/axiosClient")).default;
+            const targetId = createdOrder?.id || createdOrder?.ma_don_hang || orderCode;
+            const payRes = await axiosClient.post("/vnpay/create-payment", {
+                order_id: targetId,
+            });
+
+            const url = payRes?.payment_url || payRes?.data?.payment_url;
+            if (url) {
+                setCreatedPaymentUrl(url);
+                showToast.success("Chuyển hướng đến Cổng VNPAY thành công!");
+                navigateToExternalUrl(url);
+            } else {
+                showToast.error("Không nhận được liên kết thanh toán từ VNPAY. Vui lòng thử lại!");
+            }
+        } catch (err) {
+            console.error("Lỗi mở VNPAY:", err);
+            showToast.error("Không thể mở Cổng VNPAY. Vui lòng thử lại!");
+        } finally {
+            setOpeningVNPay(false);
+        }
+    };
+
     // Man hinh xac nhan dat hang thanh cong
     if (orderSuccess) {
         return (
@@ -438,10 +530,54 @@ export default function Cart() {
                         Đặt hàng thành công!
                     </h1>
 
-                    <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {orderCode && (
+                        <p className="mt-2 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                            Mã đơn hàng: #{orderCode}
+                        </p>
+                    )}
+
+                    <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                         Cảm ơn bạn đã mua sắm tại TECHNOVA.
                         Đơn hàng của bạn đã được ghi nhận và đang chờ xử lý.
                     </p>
+
+                    {/* Nếu đơn hàng chọn thanh toán VNPAY nhưng chưa thanh toán xong, cho nút quét QR ngay */}
+                    {(customer.phuong_thuc_thanh_toan === "vnpay" || createdPaymentUrl || orderCode) && (
+                        <div className="mt-5 p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-left">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
+                                    <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse"></span>
+                                    Thanh toán VNPAY / VNPAY-QR
+                                </p>
+                                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded">
+                                    Chờ quét mã
+                                </span>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                                Nhấn nút bên dưới để mở ngay màn hình quét mã QR bằng App Ngân hàng hoặc thanh toán thẻ ATM test:
+                            </p>
+                            <button
+                                type="button"
+                                disabled={openingVNPay}
+                                onClick={handleOpenVNPay}
+                                className="mt-3 inline-flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 disabled:opacity-50 px-4 py-3.5 font-bold text-white text-sm shadow-md transition cursor-pointer"
+                            >
+                                {openingVNPay ? (
+                                    <span>Đang mở Cổng VNPAY...</span>
+                                ) : (
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                                        <span>Mở Cổng Quét Mã QR VNPAY Ngay ➔</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="mt-4 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300 text-xs sm:text-sm flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <span>Email xác nhận đơn hàng chi tiết đã được gửi tự động đến hộp thư của bạn!</span>
+                    </div>
 
 
 
@@ -570,6 +706,29 @@ export default function Cart() {
                                         />
                                     </div>
 
+                                    {/* Trường nhập Email nhận thông báo xác nhận đơn hàng */}
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Email nhận thông báo đơn hàng <span className="text-xs font-normal text-slate-400">(nhận hóa đơn qua email)</span></span>
+                                            {currentUser?.email && (
+                                                <span className="text-xs font-normal text-slate-400">Mặc định: {currentUser.email}</span>
+                                            )}
+                                        </label>
+
+                                        <input
+                                            type="email"
+                                            value={customer.email}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    email: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Nhập email của bạn (vd: nguoiyahoo@gmail.com)"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
+                                        />
+                                    </div>
+
                                     <div>
                                         <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
                                             <span>Địa chỉ giao hàng <span className="text-rose-500">*</span></span>
@@ -598,14 +757,76 @@ export default function Cart() {
                             </section>
 
                             <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7">
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    Phương thức thanh toán
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                                    <span>Phương thức thanh toán</span>
+                                    <span className="text-xs font-normal text-blue-600 dark:text-blue-400">Chọn 1 phương thức</span>
                                 </h2>
 
                                 <div className="mt-5 space-y-3">
-                                    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${customer.phuong_thuc_thanh_toan === "cod"
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-                                        : "border-slate-200 dark:border-slate-700"
+                                    {/* 1. Thanh toán Cổng VNPAY / VNPAY-QR (Đưa lên đầu và ưu tiên) */}
+                                    <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-all ${customer.phuong_thuc_thanh_toan === "vnpay"
+                                        ? "border-blue-500 bg-blue-50/90 dark:bg-blue-950/50 ring-2 ring-blue-500/40 shadow-sm"
+                                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                                        }`}>
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            value="vnpay"
+                                            checked={customer.phuong_thuc_thanh_toan === "vnpay"}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    phuong_thuc_thanh_toan: e.target.value,
+                                                })
+                                            }
+                                            className="mt-1 accent-blue-600 cursor-pointer h-4 w-4"
+                                        />
+
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-[10px]">
+                                                        VN
+                                                    </div>
+                                                    <p className="font-bold text-slate-900 dark:text-white">
+                                                        Chuyển khoản qua VNPAY / Quét mã QR
+                                                    </p>
+                                                </div>
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-rose-500 to-red-600 text-white uppercase tracking-wider shadow-xs">
+                                                    Khuyên dùng
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded-md">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                                                    VNPAY-QR
+                                                </span>
+                                                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                                    App Ngân hàng (VCB, BIDV, Agribank, MB...)
+                                                </span>
+                                                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                                                    Thẻ ATM / NCB Test
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                                Quét mã QR bằng ứng dụng ngân hàng hoặc thanh toán thẻ ATM nội địa / thẻ quốc tế. Chuyển hướng bảo mật sang Cổng VNPAY.
+                                            </p>
+
+                                            {customer.phuong_thuc_thanh_toan === "vnpay" && (
+                                                <div className="mt-3 p-2.5 rounded-xl bg-blue-100/70 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-xs flex items-center gap-2">
+                                                    <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse shrink-0"></span>
+                                                    <span>Bấm <strong>&quot;Thanh toán ngay qua VNPAY-QR&quot;</strong> để mở màn hình quét mã QR.</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+
+                                    {/* 2. Thanh toán COD */}
+                                    <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-all ${customer.phuong_thuc_thanh_toan === "cod"
+                                        ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/30 ring-2 ring-blue-500/20"
+                                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
                                         }`}>
                                         <input
                                             type="radio"
@@ -618,22 +839,23 @@ export default function Cart() {
                                                     phuong_thuc_thanh_toan: e.target.value,
                                                 })
                                             }
-                                            className="mt-1 accent-blue-600"
+                                            className="mt-1 accent-blue-600 cursor-pointer h-4 w-4"
                                         />
 
                                         <div>
-                                            <p className="font-bold text-slate-900 dark:text-white">
-                                                Thanh toán khi nhận hàng (COD)
+                                            <p className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                                <span>Thanh toán khi nhận hàng (COD)</span>
                                             </p>
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                Thanh toán cho nhân viên giao hàng khi nhận sản phẩm.
+                                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                Thanh toán tiền mặt cho nhân viên giao hàng khi nhận sản phẩm.
                                             </p>
                                         </div>
                                     </label>
 
-                                    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${customer.phuong_thuc_thanh_toan === "bank_transfer"
-                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-                                        : "border-slate-200 dark:border-slate-700"
+                                    {/* 3. Chuyển khoản ngân hàng thường */}
+                                    <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-all ${customer.phuong_thuc_thanh_toan === "bank_transfer"
+                                        ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/30 ring-2 ring-blue-500/20"
+                                        : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
                                         }`}>
                                         <input
                                             type="radio"
@@ -646,24 +868,19 @@ export default function Cart() {
                                                     phuong_thuc_thanh_toan: e.target.value,
                                                 })
                                             }
-                                            className="mt-1 accent-blue-600"
+                                            className="mt-1 accent-blue-600 cursor-pointer h-4 w-4"
                                         />
 
                                         <div>
                                             <p className="font-bold text-slate-900 dark:text-white">
-                                                Chuyển khoản ngân hàng / ATM
+                                                Chuyển khoản ngân hàng thủ công
                                             </p>
-                                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                                Chọn phương thức này nếu hệ thống của bạn hỗ trợ quy trình chuyển khoản.
+                                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                Chuyển khoản thủ công qua số tài khoản ngân hàng và chờ nhân viên xác nhận.
                                             </p>
                                         </div>
                                     </label>
                                 </div>
-
-                                <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                    Chuyển khoản hiện chưa đồng nghĩa với thanh toán trực tuyến thành công.
-                                    Để nhận tiền tự động, cần tích hợp cổng thanh toán hoặc quy trình xác nhận chuyển khoản.
-                                </p>
                             </section>
 
                             {errorMessage && (
@@ -734,15 +951,30 @@ export default function Cart() {
                             <button
                                 type="submit"
                                 disabled={processing || !selectedItems.length}
-                                className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                className={`mt-6 w-full rounded-xl px-5 py-4 font-bold text-white transition flex items-center justify-center gap-2 shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${
+                                    customer.phuong_thuc_thanh_toan === "vnpay"
+                                        ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 shadow-blue-500/25"
+                                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                                }`}
                             >
-                                {processing
-                                    ? "Đang tạo đơn hàng..."
-                                    : "Đặt hàng"}
+                                {processing ? (
+                                    <span>Đang xử lý đơn hàng...</span>
+                                ) : customer.phuong_thuc_thanh_toan === "vnpay" ? (
+                                    <>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                                        <span>Thanh toán ngay bằng VNPAY-QR ➔</span>
+                                    </>
+                                ) : customer.phuong_thuc_thanh_toan === "cod" ? (
+                                    <span>Xác nhận đặt hàng (COD)</span>
+                                ) : (
+                                    <span>Xác nhận đặt hàng (Chuyển khoản)</span>
+                                )}
                             </button>
 
                             <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
-                                Vui lòng kiểm tra kỹ thông tin trước khi đặt hàng.
+                                {customer.phuong_thuc_thanh_toan === "vnpay"
+                                    ? "⚡ Nhấn để mở Cổng VNPAY và quét mã QR bằng App Ngân hàng."
+                                    : "Vui lòng kiểm tra kỹ thông tin trước khi đặt hàng."}
                             </p>
                         </aside>
                     </form>
@@ -1172,21 +1404,30 @@ export default function Cart() {
                                             }
                                             className="w-full border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                                         >
+                                            <option value="vnpay">
+                                                ★ Chuyển khoản qua VNPAY / Quét mã QR
+                                            </option>
                                             <option value="cod">
                                                 Thanh toán khi nhận hàng (COD)
                                             </option>
                                             <option value="bank_transfer">
-                                                Chuyển khoản ngân hàng
+                                                Chuyển khoản ngân hàng thủ công
                                             </option>
                                         </select>
 
                                         <button
                                             type="submit"
                                             disabled={processing}
-                                            className="w-full rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold py-3"
+                                            className={`w-full rounded-xl disabled:opacity-50 text-white font-bold py-3 transition ${
+                                                customer.phuong_thuc_thanh_toan === "vnpay"
+                                                    ? "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/30"
+                                                    : "bg-emerald-600 hover:bg-emerald-700"
+                                            }`}
                                         >
                                             {processing
                                                 ? "Đang xử lý..."
+                                                : customer.phuong_thuc_thanh_toan === "vnpay"
+                                                ? "Thanh toán ngay bằng VNPAY-QR ➔"
                                                 : "Xác nhận đặt hàng"}
                                         </button>
 

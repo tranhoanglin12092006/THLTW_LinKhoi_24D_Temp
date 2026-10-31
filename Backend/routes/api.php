@@ -130,6 +130,10 @@ Route::get('/orders/{id}', [OrderController::class, 'show']);
 Route::put('/orders/{id}', [OrderController::class, 'update']);
 Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
 
+// ==================== API THANH TOÁN VNPAY ====================
+Route::post('/vnpay/create-payment', [\App\Http\Controllers\PaymentController::class, 'createPayment']);
+Route::get('/vnpay/verify', [\App\Http\Controllers\PaymentController::class, 'verifyReturn']);
+
 // ==================== API CHI TIẾT ĐƠN HÀNG ====================
 
 Route::get('/order-details', [OrderDetailController::class, 'index']);

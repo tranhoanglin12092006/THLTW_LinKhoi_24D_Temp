@@ -219,6 +219,8 @@ export default function OrderDetailModal({ open, order, onClose, onCancelOrder }
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">
                                 {order.phuong_thuc_thanh_toan === "cod"
                                     ? "Thanh toán khi nhận hàng (COD)"
+                                    : order.phuong_thuc_thanh_toan === "vnpay"
+                                    ? "Chuyển khoản qua VNPAY / VNPAY-QR"
                                     : order.phuong_thuc_thanh_toan === "bank_transfer"
                                     ? "Chuyển khoản qua ngân hàng"
                                     : order.phuong_thuc_thanh_toan || "COD"}
@@ -226,6 +228,8 @@ export default function OrderDetailModal({ open, order, onClose, onCancelOrder }
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                                 {order.phuong_thuc_thanh_toan === "cod"
                                     ? "Bạn sẽ thanh toán tiền mặt trực tiếp cho nhân viên giao hàng khi nhận hàng."
+                                    : order.phuong_thuc_thanh_toan === "vnpay"
+                                    ? "Thanh toán quét mã VNPAY-QR hoặc thẻ ATM nội địa / Internet Banking qua VNPAY."
                                     : "Thanh toán bằng hình thức chuyển khoản quét mã QR hoặc STK."}
                             </p>
                         </div>
