@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Services\PHPMailerService;
 
 class OrderController extends Controller
 {
@@ -153,7 +154,19 @@ class OrderController extends Controller
             return $order;
         });
 
-        $order->load('chiTietDonHangs.sanPham');
+        // Nạp thêm chi tiết sản phẩm và thông tin người dùng vào đối tượng $order
+        $order->load(['chiTietDonHangs.sanPham', 'nguoiDung']);
+
+        // ====================================================================
+        // GỬI EMAIL XÁC NHẬN ĐƠN HÀNG QUA PHPMAILER
+        // 1. Lấy địa chỉ email khách nhận: ưu tiên email nhập trên form thanh toán,
+        //    nếu không có thì lấy email của tài khoản đang đăng nhập.
+        // 2. Gọi hàm sendOrderConfirmation() của PHPMailerService để gửi thư.
+        // ====================================================================
+        $customerEmail = !empty($data['email']) ? $data['email'] : ($user?->email ?? $order->nguoiDung?->email);
+        if ($customerEmail) {
+            PHPMailerService::sendOrderConfirmation($order, $customerEmail);
+        }
 
         return response()->json([
             'message' => 'Dat hang thanh cong.',

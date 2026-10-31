@@ -16,17 +16,18 @@ class OrderRequest extends FormRequest
     // Kiem tra du lieu don hang
 public function rules(): array
 {
-    // Khach dat hang: chi gui thong tin nhan hang
-    if ($this->isMethod('post')) {
-        return [
-            'ten_nguoi_nhan' => 'required|string|max:255',
-            'so_dien_thoai' => 'required|string|max:20',
-            'dia_chi' => 'required|string|max:255',
-            'phuong_thuc_thanh_toan' => 'required|string|max:100',
-            'khuyen_mai_id' => 'nullable|exists:khuyen_mai,id',
-            'session_id' => 'nullable|string|min:32|max:100',
-        ];
-    }
+        // Khach dat hang: chi gui thong tin nhan hang
+        if ($this->isMethod('post')) {
+            return [
+                'ten_nguoi_nhan' => 'required|string|max:255',
+                'so_dien_thoai' => 'required|string|max:20',
+                'email' => 'nullable|email|max:255',
+                'dia_chi' => 'required|string|max:255',
+                'phuong_thuc_thanh_toan' => 'required|string|max:100',
+                'khuyen_mai_id' => 'nullable|exists:khuyen_mai,id',
+                'session_id' => 'nullable|string|min:32|max:100',
+            ];
+        }
 
     // Giu quy tac cu cho cac thao tac cap nhat don hang
     return [

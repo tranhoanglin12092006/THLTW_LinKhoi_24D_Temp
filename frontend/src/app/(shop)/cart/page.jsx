@@ -91,6 +91,7 @@ export default function Cart() {
     const [customer, setCustomer] = useState({
         ten_nguoi_nhan: "",
         so_dien_thoai: "",
+        email: "",
         dia_chi: "",
         phuong_thuc_thanh_toan: "cod",
     });
@@ -104,6 +105,7 @@ export default function Cart() {
                 ...prev,
                 ten_nguoi_nhan: prev.ten_nguoi_nhan || user.ho_ten || user.name || "",
                 so_dien_thoai: prev.so_dien_thoai || user.so_dien_thoai || user.phone || user.dien_thoai || "",
+                email: prev.email || user.email || "",
                 dia_chi: prev.dia_chi || user.dia_chi || user.address || "",
             }));
         };
@@ -374,8 +376,10 @@ export default function Cart() {
                 await import("@/lib/axiosClient")
             ).default;
 
+            // Gửi dữ liệu đặt hàng lên backend: họ tên, số điện thoại, địa chỉ, phương thức và email nhận thông báo
             const response = await axiosClient.post("/orders", {
                 ...customer,
+                email: customer.email || currentUser?.email || "", // Gửi email để backend gửi xác nhận qua PHPMailer
                 session_id: sessionId,
             });
 
@@ -442,6 +446,11 @@ export default function Cart() {
                         Cảm ơn bạn đã mua sắm tại TECHNOVA.
                         Đơn hàng của bạn đã được ghi nhận và đang chờ xử lý.
                     </p>
+
+                    <div className="mt-4 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300 text-xs sm:text-sm flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <span>Email xác nhận đơn hàng chi tiết đã được gửi tự động đến hộp thư của bạn!</span>
+                    </div>
 
 
 
@@ -567,6 +576,29 @@ export default function Cart() {
                                             placeholder="Nhập số điện thoại nhận hàng"
                                             className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                             required
+                                        />
+                                    </div>
+
+                                    {/* Trường nhập Email nhận thông báo xác nhận đơn hàng */}
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                                            <span>Email nhận thông báo đơn hàng <span className="text-xs font-normal text-slate-400">(nhận hóa đơn qua email)</span></span>
+                                            {currentUser?.email && (
+                                                <span className="text-xs font-normal text-slate-400">Mặc định: {currentUser.email}</span>
+                                            )}
+                                        </label>
+
+                                        <input
+                                            type="email"
+                                            value={customer.email}
+                                            onChange={(e) =>
+                                                setCustomer({
+                                                    ...customer,
+                                                    email: e.target.value,
+                                                })
+                                            }
+                                            placeholder="Nhập email của bạn (vd: nguoiyahoo@gmail.com)"
+                                            className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors"
                                         />
                                     </div>
 
