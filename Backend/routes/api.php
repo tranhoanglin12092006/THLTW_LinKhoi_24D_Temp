@@ -16,6 +16,8 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ProductImageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -63,6 +65,15 @@ Route::delete('/products/{id}/force', [ProductController::class, 'forceDestroy']
 Route::get('/newProducts/{limit?}', [ProductController::class, 'getNewProducts']);
 Route::get('/hotProducts/{limit?}', [ProductController::class, 'getHotProducts']);
 Route::get('/saleProducts/{limit?}', [ProductController::class, 'getSaleProducts']);
+
+// ==================== API ẢNH PHỤ SẢN PHẨM ====================
+Route::get('/products/{productId}/images', [ProductImageController::class, 'index']);
+Route::post('/products/{productId}/images', [ProductImageController::class, 'store']);
+Route::delete('/products/{productId}/images/{imageId}', [ProductImageController::class, 'destroy']);
+
+// ==================== API ĐÁNH GIÁ SẢN PHẨM (REVIEWS) ====================
+Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
+Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);
 
 
 

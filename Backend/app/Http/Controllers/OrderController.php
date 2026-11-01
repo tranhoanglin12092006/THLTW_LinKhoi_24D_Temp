@@ -184,10 +184,14 @@ class OrderController extends Controller
             $paymentUrl = VNPayService::createPaymentUrl($order, $request->ip(), $bankCode);
         } else {
             // Phương thức COD hoặc Chuyển khoản thông thường:
-            // Gửi email xác nhận đặt hàng ngay qua PHPMailer
-            $customerEmail = !empty($data['email']) ? $data['email'] : ($user?->email ?? $order->nguoiDung?->email);
-            if ($customerEmail) {
-                PHPMailerService::sendOrderConfirmation($order, $customerEmail);
+            // Gửi email xác nhận đặt hàng an toàn (không làm gián đoạn đặt hàng nếu có lỗi mail)
+            try {
+                $customerEmail = !empty($data['email']) ? $data['email'] : ($user?->email ?? $order->nguoiDung?->email);
+                if ($customerEmail) {
+                    PHPMailerService::sendOrderConfirmation($order, $customerEmail);
+                }
+            } catch (\Throwable $mailErr) {
+                Log::warning("Không thể gửi email xác nhận cho đơn #{$order->ma_don_hang}: " . $mailErr->getMessage());
             }
         }
 

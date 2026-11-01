@@ -14,6 +14,7 @@ import {
 } from "@/services/cartServices";
 import { addToLocalCart } from "@/services/cartStorage";
 import { showToast } from "@/components/common/Toast";
+import ProductReviews from "@/components/shop/product/ProductReviews";
 
 // Dinh dang gia tien
 function formatPrice(price) {
@@ -411,6 +412,8 @@ export default function ProductDetailPage() {
                 price: finalPrice,
                 originalPrice: price,
                 imageUrl: images[0] || "",
+                image: images[0] || "",
+                hinh_anh_url: images[0] || "",
                 selected: true,
             }, Number(quantity));
 
@@ -790,6 +793,9 @@ export default function ProductDetailPage() {
                     </div>
                 </section>
 
+                {/* Khu vuc danh gia va nhan xet san pham */}
+                <ProductReviews productId={product.id} />
+
                 {/* San pham lien quan */}
                 <section className="mt-10">
                     <div className="mb-5">
@@ -820,3 +826,4 @@ export default function ProductDetailPage() {
         </main>
     );
 }
+

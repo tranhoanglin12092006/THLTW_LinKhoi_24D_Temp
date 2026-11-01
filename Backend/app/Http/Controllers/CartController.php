@@ -22,7 +22,7 @@ class CartController extends Controller
     {
         try {
             // Lấy giỏ hàng và lấy luôn các chi tiết bên trong.
-            $carts = Cart::with('chiTietGioHangs.sanPham')
+            $carts = Cart::with(['chiTietGioHangs.sanPham.danhMuc', 'chiTietGioHangs.sanPham.thuongHieu'])
                 ->orderBy('id')
                 ->get();
 
@@ -74,7 +74,7 @@ class CartController extends Controller
         ]);
 
         try {
-            $cart = Cart::with('chiTietGioHangs.sanPham')
+            $cart = Cart::with(['chiTietGioHangs.sanPham.danhMuc', 'chiTietGioHangs.sanPham.thuongHieu'])
                 ->whereNull('nguoi_dung_id')
                 ->where('session_id', $validated['session_id'])
                 ->first();
@@ -85,7 +85,7 @@ class CartController extends Controller
                     'session_id' => $validated['session_id'],
                 ]);
 
-                $cart->load('chiTietGioHangs.sanPham');
+                $cart->load(['chiTietGioHangs.sanPham.danhMuc', 'chiTietGioHangs.sanPham.thuongHieu']);
             }
 
             return response()->json([

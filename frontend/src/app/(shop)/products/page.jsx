@@ -472,7 +472,9 @@ export default function Products() {
             slug: product.slug,
             price: product.price,
             originalPrice: product.originalPrice || product.price,
-            imageUrl: product.imageUrl,
+            imageUrl: product.image || product.imageUrl,
+            image: product.image || product.imageUrl,
+            hinh_anh_url: product.image || product.imageUrl,
             selected: true,
         }, 1);
 

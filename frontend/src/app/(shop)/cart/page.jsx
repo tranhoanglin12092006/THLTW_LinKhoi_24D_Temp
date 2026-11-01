@@ -20,6 +20,8 @@ import {
 } from "@/services/cartStorage";
 import { showToast } from "@/components/common/Toast";
 import { getMe } from "@/services/authServices";
+import { getAllProducts } from "@/services/productServices";
+import { resolveProductImage, isFallbackImage, FALLBACK_PRODUCT_IMAGE } from "@/utils/productImage";
 
 // Tao ma phien rieng cho gio hang khach
 function getSessionId() {
@@ -60,11 +62,8 @@ function mapCartItems(cart) {
                     ? salePrice
                     : originalPrice,
             originalPrice,
-            imageUrl:
-                product.hinh_anh_url ||
-                product.hinh_anh ||
-                product.image ||
-                "/images/no-image.png",
+            imageUrl: resolveProductImage(product.hinh_anh_url || product.hinh_anh || product.image),
+            image: resolveProductImage(product.hinh_anh_url || product.hinh_anh || product.image),
             quantity: Number(item.so_luong || 1),
             selected: true,
         };
@@ -187,22 +186,78 @@ export default function Cart() {
 
                 if (cancelled) return;
 
-                // 3. Hợp nhất giữa localItems và mapped từ database
+                // 3. Tải danh sách sản phẩm đối soát để làm giàu hình ảnh và thông tin mới nhất
+                let productMap = new Map();
+                try {
+                    const productsRes = await getAllProducts();
+                    const prodList = Array.isArray(productsRes)
+                        ? productsRes
+                        : (productsRes?.data || []);
+                    for (const p of prodList) {
+                        if (p?.id) productMap.set(String(p.id), p);
+                    }
+                } catch (e) {
+                    // Không chặn giao diện nếu lỗi API sản phẩm
+                }
+
+                // 4. Hợp nhất giữa localItems và mapped từ database
                 let merged = [...localItems];
                 for (const dbItem of mapped) {
-                    const exists = merged.find((item) => String(item.id || item.productId) === String(dbItem.productId || dbItem.id));
-                    if (!exists) {
+                    const existingIdx = merged.findIndex((item) => String(item.id || item.productId) === String(dbItem.productId || dbItem.id));
+                    if (existingIdx === -1) {
                         merged.push(dbItem);
+                    } else {
+                        merged[existingIdx] = {
+                            ...dbItem,
+                            ...merged[existingIdx],
+                            imageUrl: (!isFallbackImage(dbItem.imageUrl) ? dbItem.imageUrl : merged[existingIdx].imageUrl),
+                            name: dbItem.name || merged[existingIdx].name,
+                            slug: dbItem.slug || merged[existingIdx].slug,
+                            category: dbItem.category || merged[existingIdx].category,
+                        };
                     }
                 }
 
-                // Đảm bảo các thuộc tính id, productId, selected đầy đủ
-                merged = merged.map((item) => ({
-                    ...item,
-                    id: item.id || item.productId,
-                    productId: item.productId || item.id,
-                    selected: item.selected !== undefined ? item.selected : true,
-                }));
+                // 5. Làm giàu toàn diện dữ liệu sản phẩm từ productMap (sửa mọi ảnh lỗi/thiếu/fallback)
+                merged = merged.map((item) => {
+                    const pId = String(item.productId || item.id);
+                    const realProduct = productMap.get(pId);
+
+                    let freshImage = item.imageUrl;
+                    let freshName = item.name;
+                    let freshSlug = item.slug;
+                    let freshCategory = item.category;
+
+                    if (realProduct) {
+                        const rawImg = realProduct.hinh_anh_url || realProduct.image || realProduct.hinh_anh;
+                        if (rawImg && (!freshImage || isFallbackImage(freshImage))) {
+                            freshImage = resolveProductImage(rawImg);
+                        }
+                        if (realProduct.ten || realProduct.product_name) {
+                            freshName = realProduct.ten || realProduct.product_name;
+                        }
+                        if (realProduct.slug || realProduct.duong_dan) {
+                            freshSlug = realProduct.slug || realProduct.duong_dan;
+                        }
+                        if (realProduct.danh_muc?.ten) {
+                            freshCategory = realProduct.danh_muc.ten;
+                        }
+                    }
+
+                    const resolvedImg = resolveProductImage(freshImage || item.image || item.hinh_anh_url || item.hinh_anh);
+
+                    return {
+                        ...item,
+                        id: item.id || item.productId,
+                        productId: item.productId || item.id,
+                        name: freshName,
+                        slug: freshSlug || String(item.productId || item.id),
+                        category: freshCategory || "Sản phẩm",
+                        imageUrl: resolvedImg,
+                        image: resolvedImg,
+                        selected: item.selected !== undefined ? item.selected : true,
+                    };
+                });
 
                 setCartItems(merged);
                 saveLocalCart(merged);
@@ -897,34 +952,57 @@ export default function Cart() {
                             </h2>
 
                             <div className="mt-5 space-y-4">
-                                {selectedItems.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-start gap-3"
-                                    >
-                                        <div className="relative h-16 w-16 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
-                                            <img
-                                                src={item.imageUrl}
-                                                alt={item.name}
-                                                className="h-full w-full object-contain"
-                                            />
+                                {selectedItems.map((item) => {
+                                    const itemImg = resolveProductImage(item.imageUrl || item.image || item.hinh_anh_url || item.hinh_anh);
+                                    const hasImg = itemImg && !isFallbackImage(itemImg);
+                                    const itemUrl = `/products/${item.slug || item.productId || item.id}`;
 
-                                            <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700 px-1 text-xs font-bold text-white">
-                                                {item.quantity}
-                                            </span>
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            className="flex items-start gap-3 group"
+                                        >
+                                            <Link
+                                                href={itemUrl}
+                                                className="relative h-16 w-16 shrink-0 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1 flex items-center justify-center overflow-hidden hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm"
+                                                title={`Xem chi tiết "${item.name}"`}
+                                            >
+                                                {hasImg ? (
+                                                    <img
+                                                        src={itemImg}
+                                                        alt={item.name}
+                                                        className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                                                        onError={(e) => {
+                                                            e.currentTarget.onerror = null;
+                                                            e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                                    </div>
+                                                )}
+
+                                                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-800 dark:bg-slate-700 px-1 text-[11px] font-bold text-white shadow ring-2 ring-white dark:ring-slate-900">
+                                                    {item.quantity}
+                                                </span>
+                                            </Link>
+
+                                            <div className="min-w-0 flex-1">
+                                                <Link
+                                                    href={itemUrl}
+                                                    className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                >
+                                                    {item.name}
+                                                </Link>
+
+                                                <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                                                    {formatCurrency(item.price * item.quantity)}
+                                                </p>
+                                            </div>
                                         </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <p className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-white">
-                                                {item.name}
-                                            </p>
-
-                                            <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
-                                                {formatCurrency(item.price * item.quantity)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             <div className="mt-5 space-y-3 border-t border-slate-200 dark:border-slate-700 pt-5 text-sm">
@@ -1142,22 +1220,50 @@ export default function Cart() {
                                                         className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                     />
 
-                                                    {/* Ảnh sản phẩm */}
-                                                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 p-1.5 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                                                        <img
-                                                            src={item.imageUrl}
-                                                            alt={item.name}
-                                                            className="w-full h-full object-contain"
-                                                        />
-                                                    </div>
+                                                    {/* Ảnh sản phẩm - Link và hiệu ứng chuẩn ProductCard */}
+                                                    {(() => {
+                                                        const itemImg = resolveProductImage(item.imageUrl || item.image || item.hinh_anh_url || item.hinh_anh);
+                                                        const hasImg = itemImg && !isFallbackImage(itemImg);
+                                                        const itemUrl = `/products/${item.slug || item.productId || item.id}`;
+
+                                                        return (
+                                                            <Link
+                                                                href={itemUrl}
+                                                                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 p-1.5 flex-shrink-0 overflow-hidden flex items-center justify-center group/img hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm"
+                                                                title={`Xem chi tiết "${item.name}"`}
+                                                            >
+                                                                {hasImg ? (
+                                                                    <img
+                                                                        src={itemImg}
+                                                                        alt={item.name}
+                                                                        className="w-full h-full object-contain group-hover/img:scale-110 transition-transform duration-300"
+                                                                        onError={(e) => {
+                                                                            e.currentTarget.onerror = null;
+                                                                            e.currentTarget.src = FALLBACK_PRODUCT_IMAGE;
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                                                                        <span className="text-[10px] mt-1 font-medium text-slate-400 dark:text-slate-500">Chưa có ảnh</span>
+                                                                    </div>
+                                                                )}
+                                                            </Link>
+                                                        );
+                                                    })()}
 
                                                     {/* Tên & danh mục */}
                                                     <div className="min-w-0 flex-1 space-y-1">
                                                         <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-                                                            {item.category}
+                                                            {item.category || "Thiết bị công nghệ"}
                                                         </span>
                                                         <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white line-clamp-2">
-                                                            {item.name}
+                                                            <Link
+                                                                href={`/products/${item.slug || item.productId || item.id}`}
+                                                                className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                            >
+                                                                {item.name}
+                                                            </Link>
                                                         </h3>
 
                                                         {/* Đơn giá mobile */}

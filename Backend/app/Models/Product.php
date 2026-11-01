@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-
-
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
@@ -37,9 +35,11 @@ class Product extends Model
         'trang_thai' => 'boolean',
     ];
 
-    // Them URL anh chinh vao du lieu tra ve
+    // Them cac thuoc tinh tinh toan tu dong vao JSON
     protected $appends = [
         'hinh_anh_url',
+        'diem_danh_gia',
+        'so_luong_danh_gia',
     ];
 
     // Lay URL anh chinh
@@ -49,7 +49,31 @@ class Product extends Model
             return asset('images/no-image.png');
         }
 
-        return asset('storage/' . $this->hinh_anh);
+        $path = ltrim($this->hinh_anh, '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, 8);
+        }
+
+        return asset('storage/' . $path);
+    }
+
+    // Tinh diem danh gia trung binh cua san pham (vi du: 4.8 / 5.0)
+    public function getDiemDanhGiaAttribute()
+    {
+        $avg = $this->reviews()->where('trang_thai', true)->avg('so_sao');
+        return $avg ? round((float)$avg, 1) : 5.0;
+    }
+
+    // Dem tong so luot danh gia cua san pham
+    public function getSoLuongDanhGiaAttribute()
+    {
+        return $this->reviews()->where('trang_thai', true)->count();
+    }
+
+    // Quan he: 1 San pham co nhieu Danh gia (Reviews)
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'san_pham_id');
     }
 
     // Quan he voi danh muc
@@ -81,5 +105,6 @@ class Product extends Model
     {
         return $this->hasMany(ProductImage::class, 'product_id');
     }
-}
 
+    
+}

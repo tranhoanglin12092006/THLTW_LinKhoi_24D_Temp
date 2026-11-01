@@ -7,8 +7,7 @@ import { getPosts } from "@/services/postServices";
 
 /**
  * Component hiển thị khu vực Bài viết / Tin tức công nghệ
- * Thiết kế phong cách e-commerce cao cấp, sang trọng, hiển thị hình ảnh chất lượng cao
- * Tự động đồng bộ với danh sách bài viết từ Backend API với fallback sang STATIC_NEWS
+ * Thiết kế phong cách e-commerce cao cấp, hiển thị bài viết thật từ Backend API
  */
 export default function NewsSection() {
     const [newsList, setNewsList] = useState([]);
@@ -17,35 +16,44 @@ export default function NewsSection() {
     useEffect(() => {
         const fetchNews = async () => {
             try {
+                // 1. Gọi API lấy 4 bài viết mới nhất từ Database
                 const res = await getPosts(1, 4, "", "all", "1", false);
-                const items = res.data || res;
-                if (Array.isArray(items) && items.length > 0) {
+                
+                // 2. Trích xuất mảng bài viết (hỗ trợ cả dạng res.data của Laravel Resource)
+                const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+
+                if (items.length > 0) {
                     const formatted = items.map((p, index) => {
                         const fallbackStatic = STATIC_NEWS[index % STATIC_NEWS.length];
                         return {
                             id: p.id,
                             title: p.tieu_de,
-                            slug: p.duong_dan,
-                            category: p.category_name || p.danh_muc?.ten || "Công nghệ",
-                            date: p.ngay_dang ? new Date(p.ngay_dang).toLocaleDateString("vi-VN", {
-                                day: "2-digit",
-                                month: "long",
-                                year: "numeric",
-                            }) : fallbackStatic.date,
+                            slug: p.duong_dan || p.id,
+                            category: p.category_name || p.danh_muc?.ten || "Tin Công Nghệ",
+                            date: p.ngay_dang 
+                                ? new Date(p.ngay_dang).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                }) 
+                                : fallbackStatic.date,
                             author: fallbackStatic.author,
                             authorRole: fallbackStatic.authorRole,
                             authorAvatar: fallbackStatic.authorAvatar,
-                            readTime: fallbackStatic.readTime,
+                            readTime: "5 phút đọc",
                             image: p.anh_dai_dien_url || p.anh_dai_dien || fallbackStatic.image,
-                            description: p.noi_dung ? p.noi_dung.slice(0, 150) + "..." : fallbackStatic.description,
+                            description: p.noi_dung 
+                                ? p.noi_dung.replace(/<[^>]*>?/gm, "").slice(0, 130) + "..." 
+                                : fallbackStatic.description,
                         };
                     });
                     setNewsList(formatted);
                 } else {
+                    // Nếu chưa có bài nào thì dùng bài mẫu tạm
                     setNewsList(STATIC_NEWS);
                 }
             } catch (err) {
-                // Khi backend đang bận hoặc offline, fallback mượt mà sang bài viết mẫu
+                console.error("Lỗi kết nối API bài viết:", err);
                 setNewsList(STATIC_NEWS);
             } finally {
                 setLoading(false);
@@ -75,15 +83,16 @@ export default function NewsSection() {
                             Bài viết công nghệ mới nhất
                         </h2>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-2xl leading-relaxed">
-                            Cập nhật xu hướng thiết bị tương lai, cẩm nang mua sắm thông minh và bài đánh giá chuyên sâu từ đội ngũ biên tập viên TECHNOVA.
+                            Cập nhật xu hướng thiết bị tương lai, cẩm nang mua sắm thông minh và bài đánh giá chuyên sâu từ đội ngũ TECHNOVA.
                         </p>
                     </div>
 
+                    {/* Nút bấm xem tất cả bài viết */}
                     <Link
-                        href="/products"
+                        href="/posts"
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 text-xs font-bold transition-all shadow-sm group hover:-translate-y-0.5 whitespace-nowrap self-start md:self-auto"
                     >
-                        <span>Khám phá kho sản phẩm</span>
+                        <span>Xem tất cả bài viết</span>
                         <span className="transition-transform group-hover:translate-x-1">→</span>
                     </Link>
                 </div>
@@ -95,8 +104,8 @@ export default function NewsSection() {
                             key={post.id}
                             className="group bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col overflow-hidden"
                         >
-                            {/* Khối Ảnh bìa bài viết với tỉ lệ 16:10 sắc nét */}
-                            <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                            {/* Khối Ảnh bìa bài viết có kèm link sang trang chi tiết */}
+                            <Link href={`/posts/${post.id}`} className="relative aspect-[16/10] overflow-hidden bg-slate-900 block">
                                 <img
                                     src={post.image}
                                     alt={post.title}
@@ -125,7 +134,7 @@ export default function NewsSection() {
                                         {post.readTime}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
 
                             {/* Khối Nội dung chi tiết */}
                             <div className="p-5 flex-1 flex flex-col justify-between gap-4">
@@ -138,7 +147,9 @@ export default function NewsSection() {
 
                                     {/* Tiêu đề bài viết */}
                                     <h3 className="font-bold text-slate-900 dark:text-white text-base leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" title={post.title}>
-                                        {post.title}
+                                        <Link href={`/posts/${post.id}`}>
+                                            {post.title}
+                                        </Link>
                                     </h3>
 
                                     {/* Tóm tắt mô tả */}
@@ -147,7 +158,7 @@ export default function NewsSection() {
                                     </p>
                                 </div>
 
-                                {/* Chân bài viết: Tác giả */}
+                                {/* Chân bài viết: Tác giả và Nút xem */}
                                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                                     <div className="flex items-center gap-2.5">
                                         <img
@@ -165,10 +176,13 @@ export default function NewsSection() {
                                         </div>
                                     </div>
 
-                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+                                    <Link 
+                                        href={`/posts/${post.id}`}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform"
+                                    >
                                         <span>Khám phá</span>
                                         <span>→</span>
-                                    </span>
+                                    </Link>
                                 </div>
                             </div>
                         </article>

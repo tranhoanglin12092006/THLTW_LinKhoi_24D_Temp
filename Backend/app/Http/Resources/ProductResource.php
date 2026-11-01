@@ -39,6 +39,12 @@ class ProductResource extends JsonResource
             'trang_thai' => $this->trang_thai,
             'status' => $this->trang_thai,
 
+            // Đánh giá sao & lượt review
+            'diem_danh_gia' => $this->diem_danh_gia,
+            'rating' => $this->diem_danh_gia,
+            'so_luong_danh_gia' => $this->so_luong_danh_gia,
+            'reviews_count' => $this->so_luong_danh_gia,
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
 
