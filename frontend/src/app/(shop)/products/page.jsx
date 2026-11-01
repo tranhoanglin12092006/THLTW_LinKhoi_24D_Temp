@@ -171,6 +171,7 @@ function flyToCart(imgEl) {
 
 
 export default function Products() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -194,8 +195,11 @@ export default function Products() {
 
     useEffect(() => {
         const keyword = searchParams.get("search") || "";
-        setSearchTerm(keyword);
-        setCurrentPage(1);
+        const timer = setTimeout(() => {
+            setSearchTerm(keyword);
+            setCurrentPage(1);
+        }, 0);
+        return () => clearTimeout(timer);
     }, [searchParams]);
 
 
@@ -531,7 +535,7 @@ export default function Products() {
         try {
             setAddingId(product.id);
             await addToCart(product);
-            router.push("/cart?checkout=1");
+            router.push(`/cart?checkout=1&productId=${product.id}`);
         } catch (err) {
             console.error("Loi mua ngay:", err);
             showToast.error(

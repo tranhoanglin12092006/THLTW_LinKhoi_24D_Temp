@@ -184,12 +184,12 @@ export default function LoginPage() {
                     return;
                 }
 
-                // Neu dang nhap tu trang thanh toan, quay lai gio hang.
+                // Nếu có yêu cầu chuyển hướng (ví dụ: quay lại thanh toán giỏ hàng)
                 const redirectTo = new URLSearchParams(window.location.search)
                     .get("redirect");
 
-                if (redirectTo === "/cart") {
-                    router.push("/cart");
+                if (redirectTo && redirectTo.startsWith("/")) {
+                    router.push(redirectTo);
                 } else {
                     router.push("/");
                 }

@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
             window.dispatchEvent(new Event("cart:updated"));
 
             if (buyNow) {
-                router.push("/cart");
+                router.push(`/cart?checkout=1&productId=${product.id}`);
                 return;
             }
 

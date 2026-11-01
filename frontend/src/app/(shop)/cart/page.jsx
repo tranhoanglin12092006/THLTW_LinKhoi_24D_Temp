@@ -149,8 +149,11 @@ export default function Cart() {
     // Kiểm tra đăng nhập: Chưa đăng nhập thì không được xem giỏ hàng
     useEffect(() => {
         if (!isUserLoggedIn()) {
-            showToast.warning("Vui lòng đăng nhập tài khoản để xem giỏ hàng của bạn!");
-            router.push(`/login?redirect=${encodeURIComponent("/cart")}`);
+            showToast.warning("Vui lòng đăng nhập tài khoản để xem giỏ hàng và thanh toán!");
+            const currentUrl = typeof window !== "undefined"
+                ? (window.location.pathname + window.location.search)
+                : "/cart";
+            router.push(`/login?redirect=${encodeURIComponent(currentUrl)}`);
         }
     }, [router]);
 
@@ -263,8 +266,25 @@ export default function Cart() {
                 saveLocalCart(merged);
 
                 // Tu dong vao thanh toan khi den tu nut "Mua ngay"
-                const wantCheckout =
-                    new URLSearchParams(window.location.search).get("checkout") === "1";
+                const params = new URLSearchParams(window.location.search);
+                const wantCheckout = params.get("checkout") === "1";
+                const targetProductId = params.get("productId");
+
+                if (targetProductId) {
+                    // Nếu "Mua ngay" 1 sản phẩm cụ thể: Đánh dấu CHỈ sản phẩm đó được chọn
+                    const hasTarget = merged.some(
+                        (item) => String(item.id || item.productId) === String(targetProductId)
+                    );
+                    if (hasTarget) {
+                        merged = merged.map((item) => ({
+                            ...item,
+                            selected: String(item.id || item.productId) === String(targetProductId),
+                        }));
+                    }
+                }
+
+                setCartItems(merged);
+                saveLocalCart(merged);
 
                 if (wantCheckout) {
                     const token =
@@ -272,13 +292,26 @@ export default function Cart() {
                         localStorage.getItem("access_token");
 
                     if (!token) {
+                        const currentUrl = typeof window !== "undefined"
+                            ? (window.location.pathname + window.location.search)
+                            : "/cart?checkout=1";
                         router.push(
-                            `/login?redirect=${encodeURIComponent("/cart?checkout=1")}`
+                            `/login?redirect=${encodeURIComponent(currentUrl)}`
                         );
                         return;
                     }
 
-                    if (merged.length > 0) setShowCheckout(true);
+                    // Đảm bảo có sản phẩm được chọn để thanh toán
+                    const hasSelected = merged.some((item) => item.selected);
+                    if (!hasSelected && merged.length > 0) {
+                        merged = merged.map((item) => ({ ...item, selected: true }));
+                        setCartItems(merged);
+                        saveLocalCart(merged);
+                    }
+
+                    if (merged.length > 0) {
+                        setShowCheckout(true);
+                    }
                 }
             } catch (error) {
                 if (!cancelled) {
@@ -427,16 +460,6 @@ export default function Cart() {
             setErrorMessage("");
             setSuccessMessage("");
 
-            // Chi cho phep dat hang voi toan bo gio hang da chon
-            // Backend hien tai xoa tat ca item trong gio sau khi dat hang.
-            if (selectedItems.length !== cartItems.length) {
-                setErrorMessage(
-                    "Backend hien xoa toan bo gio hang sau khi dat hang. " +
-                    "Vui long chon tat ca san pham hoac bo chon cac san pham khong muon mua."
-                );
-                return;
-            }
-
             const axiosClient = (
                 await import("@/lib/axiosClient")
             ).default;
@@ -467,8 +490,14 @@ export default function Cart() {
             if (paymentUrl) {
                 setCreatedPaymentUrl(paymentUrl);
             }
-            setCartItems([]);
-            clearLocalCart();
+
+            // Chỉ xóa các sản phẩm đã được đặt hàng thành công khỏi giỏ hàng
+            const orderedIds = new Set(orderItems.map((o) => String(o.san_pham_id)));
+            const remainingCart = cartItems.filter(
+                (item) => !orderedIds.has(String(item.productId || item.id))
+            );
+            setCartItems(remainingCart);
+            saveLocalCart(remainingCart);
 
             // Nếu khách chọn thanh toán qua VNPAY -> lập tức chuyển hướng sang Cổng thanh toán VNPAY (nơi có mã QR và thẻ ngân hàng)
             if (customer.phuong_thuc_thanh_toan === "vnpay") {

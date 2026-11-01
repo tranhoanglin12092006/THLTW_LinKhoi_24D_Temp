@@ -163,7 +163,12 @@ class OrderController extends Controller
 
             // Xoa cac san pham da dat khoi gio hang database (neu co)
             if ($cart) {
-                $cart->chiTietGioHangs()->delete();
+                if (!empty($data['items'])) {
+                    $orderedProductIds = collect($data['items'])->pluck('san_pham_id')->filter()->all();
+                    $cart->chiTietGioHangs()->whereIn('san_pham_id', $orderedProductIds)->delete();
+                } else {
+                    $cart->chiTietGioHangs()->delete();
+                }
             }
 
             return $order;
