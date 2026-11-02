@@ -21,6 +21,8 @@ function VNPayReturnContent() {
 
     useEffect(() => {
         let isMounted = true;
+        //Đánh dấu component đang tồn tại.
+        //Biến này giúp kiểm tra component còn hoạt động trước khi cập nhật State
 
         async function verifyPayment() {
             try {
@@ -40,7 +42,7 @@ function VNPayReturnContent() {
 
                 if (isMounted) {
                     setResult(resData);
-                    
+
                     if (resData?.success) {
                         // Xóa sạch giỏ hàng trong localStorage sau khi thanh toán thành công
                         clearLocalCart();
@@ -96,7 +98,7 @@ function VNPayReturnContent() {
     return (
         <main className="min-h-[75vh] flex items-center justify-center px-4 py-12 bg-slate-50 dark:bg-slate-950">
             <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-10 text-center shadow-xl">
-                
+
                 {/* Biểu tượng trạng thái */}
                 {isSuccess ? (
                     <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/60 ring-8 ring-emerald-50 dark:ring-emerald-900/20">
@@ -169,7 +171,7 @@ function VNPayReturnContent() {
                 {/* Thông báo gửi email */}
                 {isSuccess && (
                     <div className="mt-4 p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300 text-xs sm:text-sm flex items-center justify-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                         <span>Hóa đơn và xác nhận đơn hàng đã được gửi tự động qua email của bạn!</span>
                     </div>
                 )}
