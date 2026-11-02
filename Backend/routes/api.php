@@ -18,7 +18,11 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProductImageController;
+
 use App\Http\Controllers\ContactController;
+
+use App\Http\Controllers\StockController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -27,10 +31,10 @@ Route::get('/user', function (Request $request) {
 
 // Route::middleware('auth:sanctum')->group(function () {
 
-    // Route::middleware('is.admin')->group(function () {
+// Route::middleware('is.admin')->group(function () {
 
-    // API thong ke Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+// API thong ke Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
 
@@ -215,6 +219,7 @@ Route::put('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::post('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::delete('/pages/{id}/force', [PageController::class, 'forceDelete']);
 
+
 // ==================== API LIÊN HỆ & GÓP Ý (CONTACTS) ====================
 Route::get('/contacts', [ContactController::class, 'index']);
 Route::post('/contacts', [ContactController::class, 'store']);
@@ -222,6 +227,17 @@ Route::get('/contacts/{id}', [ContactController::class, 'show']);
 Route::put('/contacts/{id}', [ContactController::class, 'update']);
 Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
 Route::post('/contacts/bulk-delete', [ContactController::class, 'bulkDelete']);
+
+// ==================== API QUẢN LÝ KHO (XUẤT / NHẬP HÀNG) ====================
+// FUNC-ADM-STOCK-01: Tạo phiếu nhập hàng (Ghi nhận nhập kho, tăng tồn kho sản phẩm)
+Route::post('/stock/imports', [StockController::class, 'storeImport']);
+// FUNC-ADM-STOCK-02: Tạo phiếu xuất hàng (Xuất trả nhà cung cấp, xuất hủy hàng lỗi, giảm tồn kho)
+Route::post('/stock/exports', [StockController::class, 'storeExport']);
+// FUNC-ADM-STOCK-03: Xem lịch sử nhập/xuất và tồn kho
+Route::get('/stock/imports', [StockController::class, 'getImports']);
+Route::get('/stock/exports', [StockController::class, 'getExports']);
+Route::get('/stock/inventory', [StockController::class, 'getInventory']);
+
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
