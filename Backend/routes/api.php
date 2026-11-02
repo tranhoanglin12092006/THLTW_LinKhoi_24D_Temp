@@ -18,6 +18,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProductImageController;
+use App\Http\Controllers\StockController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -213,6 +214,16 @@ Route::delete('/pages/{id}', [PageController::class, 'destroy']);
 Route::put('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::post('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::delete('/pages/{id}/force', [PageController::class, 'forceDelete']);
+
+// ==================== API QUẢN LÝ KHO (XUẤT / NHẬP HÀNG) ====================
+// FUNC-ADM-STOCK-01: Tạo phiếu nhập hàng (Ghi nhận nhập kho, tăng tồn kho sản phẩm)
+Route::post('/stock/imports', [StockController::class, 'storeImport']);
+// FUNC-ADM-STOCK-02: Tạo phiếu xuất hàng (Xuất trả nhà cung cấp, xuất hủy hàng lỗi, giảm tồn kho)
+Route::post('/stock/exports', [StockController::class, 'storeExport']);
+// FUNC-ADM-STOCK-03: Xem lịch sử nhập/xuất và tồn kho
+Route::get('/stock/imports', [StockController::class, 'getImports']);
+Route::get('/stock/exports', [StockController::class, 'getExports']);
+Route::get('/stock/inventory', [StockController::class, 'getInventory']);
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
