@@ -237,7 +237,7 @@ Route::post('/stock/exports', [StockController::class, 'storeExport']);
 Route::get('/stock/imports', [StockController::class, 'getImports']);
 Route::get('/stock/exports', [StockController::class, 'getExports']);
 Route::get('/stock/inventory', [StockController::class, 'getInventory']);
-
+>>>>>>>>> Temporary merge branch 2
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
