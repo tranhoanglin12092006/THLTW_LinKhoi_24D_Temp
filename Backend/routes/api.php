@@ -31,10 +31,10 @@ Route::get('/user', function (Request $request) {
 
 // Route::middleware('auth:sanctum')->group(function () {
 
-    // Route::middleware('is.admin')->group(function () {
+// Route::middleware('is.admin')->group(function () {
 
-    // API thong ke Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index']);
+// API thong ke Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index']);
 Route::get('/category/{id}/children', [CategoryController::class, 'children']);
 Route::get('/category/{id}/parent', [CategoryController::class, 'parent']);
 
@@ -237,6 +237,7 @@ Route::post('/stock/exports', [StockController::class, 'storeExport']);
 Route::get('/stock/imports', [StockController::class, 'getImports']);
 Route::get('/stock/exports', [StockController::class, 'getExports']);
 Route::get('/stock/inventory', [StockController::class, 'getInventory']);
+
 
 // ===================== API ĐĂNG NHẬP, ĐĂNG KÝ ====================
 Route::post('/register', [ApiUserController::class, 'register']);
