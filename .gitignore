@@ -3,54 +3,56 @@
 .env
 .env.backup
 .env.production
+!.env.example
+!.env*.example
 /node_modules
 
 # === Backend (Laravel) ===
 .phpactor.json
 .phpunit.result.cache
-/backend/.fleet
-/backend/.idea
-/backend/.nova
-/backend/.phpunit.cache
-/backend/.vscode
-/backend/.zed
-/backend/auth.json
-/backend/node_modules
-/backend/public/build
-/backend/public/hot
-/backend/public/storage
-/backend/storage/*.key
-/backend/storage/pail
-/backend/vendor
+/[Bb]ackend/.fleet
+/[Bb]ackend/.idea
+/[Bb]ackend/.nova
+/[Bb]ackend/.phpunit.cache
+/[Bb]ackend/.vscode
+/[Bb]ackend/.zed
+/[Bb]ackend/auth.json
+/[Bb]ackend/node_modules
+/[Bb]ackend/public/build
+/[Bb]ackend/public/hot
+/[Bb]ackend/public/storage
+/[Bb]ackend/storage/*.key
+/[Bb]ackend/storage/pail
+/[Bb]ackend/vendor
 Homestead.json
 Homestead.yaml
 
 # Laravel sinh ra lúc chạy. Bình thường được che bởi các .gitignore lồng trong
 # backend/, nhưng những file đó chỉ tồn tại trên branch đã có commit backend.
 # Khai báo lại ở đây để không lộ ra khi checkout sang branch khác.
-/backend/bootstrap/cache/*
-!/backend/bootstrap/cache/.gitignore
-/backend/database/*.sqlite*
-/backend/storage/app/private/*
-!/backend/storage/app/private/.gitignore
-/backend/storage/app/public/*
-!/backend/storage/app/public/.gitignore
-/backend/storage/framework/cache/*
-!/backend/storage/framework/cache/.gitignore
-/backend/storage/framework/sessions/*
-!/backend/storage/framework/sessions/.gitignore
-/backend/storage/framework/testing/*
-!/backend/storage/framework/testing/.gitignore
-/backend/storage/framework/views/*
-!/backend/storage/framework/views/.gitignore
-/backend/storage/logs/*
-!/backend/storage/logs/.gitignore
-/backend/storage/framework/compiled.php
-/backend/storage/framework/config.php
-/backend/storage/framework/down
-/backend/storage/framework/maintenance.php
-/backend/storage/framework/routes.php
-/backend/storage/framework/services.json
+/[Bb]ackend/bootstrap/cache/*
+!/[Bb]ackend/bootstrap/cache/.gitignore
+/[Bb]ackend/database/*.sqlite*
+/[Bb]ackend/storage/app/private/*
+!/[Bb]ackend/storage/app/private/.gitignore
+/[Bb]ackend/storage/app/public/*
+!/[Bb]ackend/storage/app/public/.gitignore
+/[Bb]ackend/storage/framework/cache/*
+!/[Bb]ackend/storage/framework/cache/.gitignore
+/[Bb]ackend/storage/framework/sessions/*
+!/[Bb]ackend/storage/framework/sessions/.gitignore
+/[Bb]ackend/storage/framework/testing/*
+!/[Bb]ackend/storage/framework/testing/.gitignore
+/[Bb]ackend/storage/framework/views/*
+!/[Bb]ackend/storage/framework/views/.gitignore
+/[Bb]ackend/storage/logs/*
+!/[Bb]ackend/storage/logs/.gitignore
+/[Bb]ackend/storage/framework/compiled.php
+/[Bb]ackend/storage/framework/config.php
+/[Bb]ackend/storage/framework/down
+/[Bb]ackend/storage/framework/maintenance.php
+/[Bb]ackend/storage/framework/routes.php
+/[Bb]ackend/storage/framework/services.json
 
 # === Frontend ===
 /frontend/node_modules
@@ -63,6 +65,8 @@ Homestead.yaml
 /frontend/.env
 /frontend/.env.local
 /frontend/.env.*.local
+!/frontend/.env.example
+!/frontend/.env*.example
 /frontend/npm-debug.log*
 /frontend/yarn-error.log*
 /frontend/pnpm-debug.log*
