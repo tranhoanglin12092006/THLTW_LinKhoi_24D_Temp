@@ -18,7 +18,11 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProductImageController;
+
+use App\Http\Controllers\ContactController;
+
 use App\Http\Controllers\StockController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -214,6 +218,15 @@ Route::delete('/pages/{id}', [PageController::class, 'destroy']);
 Route::put('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::post('/pages/{id}/restore', [PageController::class, 'restore']);
 Route::delete('/pages/{id}/force', [PageController::class, 'forceDelete']);
+
+
+// ==================== API LIÊN HỆ & GÓP Ý (CONTACTS) ====================
+Route::get('/contacts', [ContactController::class, 'index']);
+Route::post('/contacts', [ContactController::class, 'store']);
+Route::get('/contacts/{id}', [ContactController::class, 'show']);
+Route::put('/contacts/{id}', [ContactController::class, 'update']);
+Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
+Route::post('/contacts/bulk-delete', [ContactController::class, 'bulkDelete']);
 
 // ==================== API QUẢN LÝ KHO (XUẤT / NHẬP HÀNG) ====================
 // FUNC-ADM-STOCK-01: Tạo phiếu nhập hàng (Ghi nhận nhập kho, tăng tồn kho sản phẩm)

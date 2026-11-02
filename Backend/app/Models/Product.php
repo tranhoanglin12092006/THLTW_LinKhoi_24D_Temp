@@ -60,14 +60,22 @@ class Product extends Model
     // Tinh diem danh gia trung binh cua san pham (vi du: 4.8 / 5.0)
     public function getDiemDanhGiaAttribute()
     {
-        $avg = $this->reviews()->where('trang_thai', true)->avg('so_sao');
-        return $avg ? round((float)$avg, 1) : 5.0;
+        try {
+            $avg = $this->reviews()->where('trang_thai', true)->avg('so_sao');
+            return $avg ? round((float)$avg, 1) : 5.0;
+        } catch (\Throwable $e) {
+            return 5.0;
+        }
     }
 
     // Dem tong so luot danh gia cua san pham
     public function getSoLuongDanhGiaAttribute()
     {
-        return $this->reviews()->where('trang_thai', true)->count();
+        try {
+            return $this->reviews()->where('trang_thai', true)->count();
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 
     // Quan he: 1 San pham co nhieu Danh gia (Reviews)
