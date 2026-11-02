@@ -142,7 +142,7 @@ export default function Footer() {
                             <ul className="space-y-2.5 text-xs">
                                 <li>
                                     <a
-                                        href="contact.html"
+                                        href="/contact"
                                         className="hover:text-blue-400 transition-colors flex items-center gap-2"
                                     >
                                         <i
@@ -184,7 +184,7 @@ export default function Footer() {
                                 </li>
                                 <li>
                                     <a
-                                        href="contact.html"
+                                        href="/contact"
                                         className="hover:text-blue-400 transition-colors flex items-center gap-2"
                                     >
                                         <i
